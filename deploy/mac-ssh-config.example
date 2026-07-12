@@ -1,0 +1,29 @@
+# Mac → axon CMP server
+# Copy to: ~/.ssh/config  (merge with existing file)
+#
+# Remote (WAN):  ssh axon-cmp-remote
+# LAN:           ssh axon-cmp-lan
+# Cursor:        Remote-SSH → pick host → open folder below
+
+Host axon-cmp-remote
+  HostName 223.123.193.29
+  Port 8022
+  User axon
+  # IdentityFile ~/.ssh/id_ed25519
+  # If timeout: add MikroTik NAT deploy/mikrotik-ssh-8022-forward.rsc
+  # Try 223.123.192.29 only if that is your current WAN IP
+
+Host axon-cmp-lan
+  HostName 192.168.10.148
+  Port 8022
+  User axon
+  # IdentityFile ~/.ssh/id_ed25519
+
+# Open in Cursor after connect:
+#   /home/axon/avision/AVision-WIngYipSt
+#   /home/axon/avision/AVision-WIngYipSt/CCTVCMP-linux
+#   /home/axon/avision/AVision-WIngYipSt/mobile
+#
+# CMP in browser:
+#   http://wingyip.axoncase.com:3102
+#   http://223.123.192.29:3102        (if NAT forwards 3102 to 192.168.10.148)

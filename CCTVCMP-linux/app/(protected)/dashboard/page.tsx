@@ -4,7 +4,7 @@ import { EdgeStatusPanel } from "@/components/dashboard/edge-status-panel";
 import { RiskBreakdown } from "@/components/dashboard/risk-breakdown";
 import { AlertFeed } from "@/components/dashboard/alert-feed";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { ONLINE_THRESHOLD_MS, shouldDisplayEdgeCamera } from "@/lib/camera-status";
+import { ONLINE_THRESHOLD_MS, shouldDisplayEdgeCamera, sortByFloor } from "@/lib/camera-status";
 import { getTranslations } from "next-intl/server";
 
 const CATEGORY_MAP: Record<string, { category: string; icon: string }> = {
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
     latestRiskLevel: string | null;
     latestDescription: string | null;
   };
-  const edgeDevices: EdgeDevice[] = cameras
+  const edgeDevices: EdgeDevice[] = sortByFloor(cameras
     .filter(shouldDisplayEdgeCamera)
     .map((cam: CameraWithLatestReport) => ({
       id: cam.id,
@@ -76,7 +76,7 @@ export default async function DashboardPage() {
         now - cam.lastReportAt.getTime() < ONLINE_THRESHOLD_MS,
       latestRiskLevel: cam.edgeReports[0]?.overallRiskLevel ?? null,
       latestDescription: cam.edgeReports[0]?.overallDescription ?? null,
-    }));
+    })));
 
   const edgeOnline = edgeDevices.filter((d: EdgeDevice) => d.isOnline).length;
   const openIncidents = incidents.filter((i: IncidentRow) => i.status === "open").length;

@@ -26,15 +26,54 @@ type CameraSpec = {
 
 // ── Camera list ───────────────────────────────────────────────────────────────
 // Override with CAMERAS env var (JSON), or edit this array directly.
+// AVision#2 — Wing Yip St (32 cameras, IDs prefixed av2_ to avoid collision with AVision#1)
 const DEFAULT_CAMERAS: CameraSpec[] = [
-  { id: "camera1", name: "Lobby",      streamUrl: "rtsp://fnnas.cccl4s.com:8554/site_b_01" },
-  { id: "camera2", name: "Front Door", streamUrl: "rtsp://fnnas.cccl4s.com:8554/site_b_02" },
-  { id: "camera3", name: "Exit 3",     streamUrl: "rtsp://fnnas.cccl4s.com:8554/site_b_03" },
-  { id: "camera4", name: "Camera 4",   streamUrl: "rtsp://fnnas.cccl4s.com:8554/site_b_05" },
+  // Floor 1
+  { id: "av2_camera1",  name: "F1_1",   streamUrl: "rtsp://admin:123456@192.168.10.53:554/Streaming/Channels/101" },
+  { id: "av2_camera2",  name: "F1_2",   streamUrl: "rtsp://admin:123456@192.168.10.52:554/Streaming/Channels/101" },
+  { id: "av2_camera3",  name: "F1_3",   streamUrl: "rtsp://admin:123456@192.168.10.49:554/Streaming/Channels/101" },
+  { id: "av2_camera4",  name: "F1_4",   streamUrl: "rtsp://admin:123456@192.168.10.50:554/Streaming/Channels/101" },
+  { id: "av2_camera5",  name: "F1_5",   streamUrl: "rtsp://admin:123456@192.168.10.51:554/Streaming/Channels/101" },
+  // Floor 2
+  { id: "av2_camera6",  name: "F2_1",   streamUrl: "rtsp://admin:123456@192.168.10.47:554/Streaming/Channels/101" },
+  { id: "av2_camera7",  name: "F2_2",   streamUrl: "rtsp://admin:123456@192.168.10.46:554/Streaming/Channels/101" },
+  { id: "av2_camera8",  name: "F2_3",   streamUrl: "rtsp://admin:123456@192.168.10.44:554/Streaming/Channels/101" },
+  { id: "av2_camera9",  name: "F2_4",   streamUrl: "rtsp://admin:123456@192.168.10.45:554/Streaming/Channels/101" },
+  { id: "av2_camera10", name: "F2_5",   streamUrl: "rtsp://admin:123456@192.168.10.48:554/Streaming/Channels/101" },
+  // Floor 3
+  { id: "av2_camera11", name: "F3_1",   streamUrl: "rtsp://admin:123456@192.168.10.27:554/Streaming/Channels/101" },
+  { id: "av2_camera12", name: "F3_2",   streamUrl: "rtsp://admin:123456@192.168.10.26:554/Streaming/Channels/101" },
+  { id: "av2_camera13", name: "F3_3",   streamUrl: "rtsp://admin:123456@192.168.10.28:554/Streaming/Channels/101" },
+  // Floor 4
+  { id: "av2_camera14", name: "F4_1",   streamUrl: "rtsp://admin:123456@192.168.10.32:554/Streaming/Channels/101" },
+  { id: "av2_camera15", name: "F4_2",   streamUrl: "rtsp://admin:123456@192.168.10.29:554/Streaming/Channels/101" },
+  { id: "av2_camera16", name: "F4_3",   streamUrl: "rtsp://admin:123456@192.168.10.31:554/Streaming/Channels/101" },
+  // Floor 5
+  { id: "av2_camera17", name: "F5_1",   streamUrl: "rtsp://admin:123456@192.168.10.56:554/Streaming/Channels/101" },
+  { id: "av2_camera18", name: "F5_2",   streamUrl: "rtsp://admin:123456@192.168.10.55:554/Streaming/Channels/101" },
+  { id: "av2_camera19", name: "F5_3",   streamUrl: "rtsp://admin:123456@192.168.10.54:554/Streaming/Channels/101" },
+  // Floor 7
+  { id: "av2_camera20", name: "F7_1",   streamUrl: "rtsp://admin:123456@192.168.10.41:554/Streaming/Channels/101" },
+  { id: "av2_camera21", name: "F7_2",   streamUrl: "rtsp://admin:123456@192.168.10.42:554/Streaming/Channels/101" },
+  { id: "av2_camera22", name: "F7_3",   streamUrl: "rtsp://admin:123456@192.168.10.43:554/Streaming/Channels/101" },
+  // Floor 9
+  { id: "av2_camera23", name: "F9_1",   streamUrl: "rtsp://admin:123456@192.168.10.37:554/Streaming/Channels/101" },
+  { id: "av2_camera24", name: "F9_2",   streamUrl: "rtsp://admin:123456@192.168.10.38:554/Streaming/Channels/101" },
+  { id: "av2_camera25", name: "F9_3",   streamUrl: "rtsp://admin:123456@192.168.10.39:554/Streaming/Channels/101" },
+  // Floor 11
+  { id: "av2_camera26", name: "F11_1",  streamUrl: "rtsp://admin:123456@192.168.10.35:554/Streaming/Channels/101" },
+  { id: "av2_camera27", name: "F11_2",  streamUrl: "rtsp://admin:123456@192.168.10.36:554/Streaming/Channels/101" },
+  { id: "av2_camera28", name: "F11_3",  streamUrl: "rtsp://admin:123456@192.168.10.40:554/Streaming/Channels/101" },
+  // Floor 13
+  { id: "av2_camera29", name: "F13_1",  streamUrl: "rtsp://admin:123456@192.168.10.33:554/Streaming/Channels/101" },
+  { id: "av2_camera30", name: "F13_2",  streamUrl: "rtsp://admin:123456@192.168.10.34:554/Streaming/Channels/101" },
+  { id: "av2_camera31", name: "F13_3",  streamUrl: "rtsp://admin:123456@192.168.10.57:554/Streaming/Channels/101" },
+  // Roof
+  { id: "av2_camera32", name: "ROOF_4", streamUrl: "rtsp://admin:123456@192.168.10.25:554/Streaming/Channels/101" },
 ];
 
-const PROJECT_NAME = process.env.SEED_PROJECT_NAME?.trim() || "Edge Site";
-const ZONE_NAME    = process.env.SEED_ZONE_NAME?.trim()    || "Default Zone";
+const PROJECT_NAME = process.env.SEED_PROJECT_NAME?.trim() || "Wing Yip St - AVision#2";
+const ZONE_NAME    = process.env.SEED_ZONE_NAME?.trim()    || "All Floors";
 
 void (async () => {
   let cameras: CameraSpec[] = DEFAULT_CAMERAS;

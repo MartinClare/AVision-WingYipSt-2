@@ -20,7 +20,7 @@
     "serve": "^14.2.6"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "PORT=${PORT:-3100} REACT_APP_UI_PORT=${REACT_APP_UI_PORT:-3100} REACT_APP_API_PORT=${REACT_APP_API_PORT:-3101} REACT_APP_CMP_BASE_URL=${REACT_APP_CMP_BASE_URL:-http://localhost:3102} react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -31,7 +31,7 @@
       "react-app/jest"
     ]
   },
-  "proxy": "http://localhost:3001",
+  "proxy": "http://localhost:3101",
   "browserslist": {
     "production": [
       ">0.2%",

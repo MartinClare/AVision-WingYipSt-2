@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { EdgeDeviceList } from "@/components/edge-devices/edge-device-list";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { ONLINE_THRESHOLD_MS, shouldDisplayEdgeCamera } from "@/lib/camera-status";
+import { ONLINE_THRESHOLD_MS, shouldDisplayEdgeCamera, sortByFloor } from "@/lib/camera-status";
 import { getTranslations } from "next-intl/server";
 
 export default async function EdgeDevicesPage() {
@@ -26,11 +26,11 @@ export default async function EdgeDevicesPage() {
       },
       _count: { select: { incidents: true, edgeReports: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { name: "asc" },
   });
 
   const now = Date.now();
-  const devices = cameras
+  const devices = sortByFloor(cameras
     .filter(shouldDisplayEdgeCamera)
     .map((cam) => {
       const latestReport = cam.edgeReports[0] ?? null;
@@ -73,7 +73,7 @@ export default async function EdgeDevicesPage() {
         incidentCount: cam._count.incidents,
         reportCount: cam._count.edgeReports,
       };
-    });
+    }));
 
   const onlineCount = devices.filter((d) => d.isOnline).length;
 

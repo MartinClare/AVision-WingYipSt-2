@@ -16,10 +16,9 @@ const JPEG_EOI = Buffer.from([0xff, 0xd9]);
 
 /**
  * Kill ffmpeg and restart if no new frame arrives within this window.
- * With `-timeout 10000000` (10 s) in the ffmpeg args, ffmpeg will usually
- * exit on its own when the RTSP source goes silent.  This watchdog is a
- * belt-and-suspenders fallback for cases where ffmpeg stays alive but
- * simply stops producing output (e.g. codec hang, pipe stall).
+ * This watchdog kills ffmpeg when it stops producing frames. Some ffmpeg
+ * builds interpret RTSP timeout options as listen-mode flags, so keep timeout
+ * enforcement outside ffmpeg for portable client connections.
  */
 const STALE_KILL_MS = 20_000;
 const IDLE_KILL_MS = 45_000;
@@ -101,7 +100,6 @@ function startPersistentCapture(rtspUrl: string): PersistentCapture {
   const args = [
     '-hide_banner', '-loglevel', 'error',
     '-rtsp_transport', 'tcp',
-    '-timeout', '10000000',    // 10 s socket timeout: exit cleanly if RTSP stalls
     '-i', rtspUrl,
     '-vf', 'scale=640:-2',        // low-load snapshot resolution
     '-r', '0.25',                 // 0.25 fps (~1 frame / 4s) for low-CPU grid snapshots
@@ -225,7 +223,6 @@ export function captureSingleFrameFromRTSP(rtspUrl: string): Promise<Buffer | nu
     const args = [
       '-hide_banner', '-loglevel', 'error',
       '-rtsp_transport', 'tcp',
-      '-timeout', '10000000',
       '-i', rtspUrl,
       '-frames:v', '1',
       '-vf', 'scale=640:-2',

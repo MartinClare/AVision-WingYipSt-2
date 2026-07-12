@@ -26,6 +26,11 @@ const __dirname = dirname(__filename);
 // ── Paths ────────────────────────────────────────────────────────────
 
 const REPO_ROOT = resolve(__dirname, '..', '..');
+const EDGE_CLOUD_PORT = Number(process.env.PORT || 3001);
+const PPE_UI_PORT = Number(process.env.PPE_UI_PORT || 3000);
+const CMP_PORT = Number(process.env.CMP_PORT || 3002);
+const LOCAL_VISION_PORT = Number(process.env.LOCAL_VISION_PORT || 8001);
+const LOCAL_VLLM_PORT = Number(process.env.LOCAL_VLLM_PORT || 8002);
 
 function rootConfigPath(): string {
   return resolve(REPO_ROOT, 'app.config.json');
@@ -176,14 +181,15 @@ function clientPublicOrigin(req: Request): string {
 
 /**
  * go2rtc base URL reachable from the browser.
- * When PPE-UI is on :3000, nginx proxies /go2rtc/ → localhost:1984.
+ * When PPE-UI is on its configured UI port, nginx/dev-server proxies
+ * /go2rtc/ → localhost:1984.
  */
 function go2rtcApiBaseForClient(req: Request): string {
   const host = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
   const origin = clientPublicOrigin(req);
   const uiPortMatch = host.match(/:(\d+)$/);
   const uiPort = uiPortMatch ? uiPortMatch[1] : (host.includes(':') ? '' : '80');
-  const proxiedUiPorts = new Set(['3000', '80', '443', '']);
+  const proxiedUiPorts = new Set([String(PPE_UI_PORT), '80', '443', '']);
   if (proxiedUiPorts.has(uiPort)) {
     return `${origin}/go2rtc`;
   }
@@ -284,9 +290,9 @@ router.put('/config', (req: Request, res: Response) => {
 
 router.get('/services/status', async (_req: Request, res: Response) => {
   const PORT_CHECKS: Array<[string, string, number]> = [
-    ['edge-cloud-local', 'Cloud Vision API', 3001],
-    ['edge-ui-local',    'PPE UI',           3000],
-    ['cmp',             'CMP',               3002],
+    ['edge-cloud-local', 'Cloud Vision API', EDGE_CLOUD_PORT],
+    ['edge-ui-local',    'PPE UI',           PPE_UI_PORT],
+    ['cmp',             'CMP',               CMP_PORT],
     ['go2rtc',          'go2rtc',            GO2RTC_PORT],
     ['tailscaled',      'Tailscale',         null as unknown as number],
   ];
@@ -338,9 +344,9 @@ router.get('/health/all', async (_req: Request, res: Response) => {
   const [
     portEdgeCloud, portPpeUi, portCmp, portGo2rtc,
   ] = await Promise.all([
-    checkPort('localhost', 3001),
-    checkPort('localhost', 3000),
-    checkPort('localhost', 3002),
+    checkPort('localhost', EDGE_CLOUD_PORT),
+    checkPort('localhost', PPE_UI_PORT),
+    checkPort('localhost', CMP_PORT),
     checkPort('localhost', GO2RTC_PORT),
   ]);
 
@@ -351,18 +357,18 @@ router.get('/health/all', async (_req: Request, res: Response) => {
     systemd[label] = getServiceStatus(units);
   }
 
-  const portLocalVision = await checkPort('localhost', 8001);
-  const portLocalVllm = await checkPort('localhost', 8002);
+  const portLocalVision = await checkPort('localhost', LOCAL_VISION_PORT);
+  const portLocalVllm = await checkPort('localhost', LOCAL_VLLM_PORT);
 
   res.json({
     timestamp: new Date().toISOString(),
     services: {
-      'Edge Cloud API':  { ok: portEdgeCloud,  port: 3001 },
-      'PPE UI':          { ok: portPpeUi,       port: 3000 },
-      'CMP':             { ok: portCmp,          port: 3002 },
+      'Edge Cloud API':  { ok: portEdgeCloud,  port: EDGE_CLOUD_PORT },
+      'PPE UI':          { ok: portPpeUi,       port: PPE_UI_PORT },
+      'CMP':             { ok: portCmp,          port: CMP_PORT },
       'go2rtc':          { ok: portGo2rtc,       port: GO2RTC_PORT },
-      'Local vision (FastAPI)': { ok: portLocalVision, port: 8001 },
-      'Local vLLM':      { ok: portLocalVllm,   port: 8002 },
+      'Local vision (FastAPI)': { ok: portLocalVision, port: LOCAL_VISION_PORT },
+      'Local vLLM':      { ok: portLocalVllm,   port: LOCAL_VLLM_PORT },
     },
     systemd,
     streams,

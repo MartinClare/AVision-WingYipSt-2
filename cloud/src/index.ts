@@ -25,6 +25,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const backgroundLoopsEnabled = process.env.START_BACKGROUND_LOOPS !== 'false';
 
 // Enable CORS for the React frontend (allow any origin for edge deployment)
 app.use(cors({
@@ -113,5 +114,9 @@ app.listen(PORT, () => {
   console.log(`   Analyze:      POST http://localhost:${PORT}/api/analyze-image`);
   console.log(`   Services:     GET http://localhost:${PORT}/api/services/status\n`);
 
-  startBackgroundLoops();
+  if (backgroundLoopsEnabled) {
+    startBackgroundLoops();
+  } else {
+    console.log('[server] Background RTSP loops disabled by START_BACKGROUND_LOOPS=false');
+  }
 });

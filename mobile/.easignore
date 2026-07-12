@@ -1,0 +1,6 @@
+dist/
+dist-web/
+builds/
+node_modules/.cache/
+.expo/
+*.apk

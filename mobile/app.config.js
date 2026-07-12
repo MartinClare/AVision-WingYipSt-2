@@ -3,13 +3,13 @@
  * Set EXPO_PUBLIC_CMP_API_URL before building (EAS secret or .env).
  */
 const cmpApiUrl =
-  process.env.EXPO_PUBLIC_CMP_API_URL?.replace(/\/$/, "") || "http://wingyip.axoncase.com:3002";
+  process.env.EXPO_PUBLIC_CMP_API_URL?.replace(/\/$/, "") || "http://wingyip.axoncase.com:3102";
 
 /** @type {import("expo/config").ExpoConfig} */
 module.exports = {
   name: "AXON Vision CMP",
   slug: "mobile",
-  version: "2.0.0",
+  version: "2.0.2",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "axoncmp",
@@ -35,7 +35,7 @@ module.exports = {
       backgroundColor: "#0f172a",
     },
     package: "com.axoncase.cmp",
-    versionCode: 2,
+    versionCode: 4,
     usesCleartextTraffic: true,
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
@@ -48,6 +48,7 @@ module.exports = {
   plugins: [
     "expo-router",
     "expo-secure-store",
+    "./plugins/withAndroidCleartext.js",
     [
       "expo-notifications",
       {

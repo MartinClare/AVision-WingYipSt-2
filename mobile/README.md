@@ -13,15 +13,35 @@ npm start
 
 Set `EXPO_PUBLIC_CMP_API_URL` to your CMP server (phones cannot use `localhost`).
 
-## Build Android APK
+**Public CMP URL (phones on Wi‑Fi or mobile data):** `http://wingyip.axoncase.com:3102`
+
+**LAN-only fallback:** `http://192.168.10.148:3102`
+
+## Build Android APK (macOS)
+
+APK builds are done on the Mac in:
+
+`~/Development/WingYipSt Avision Mobile`
+
+From that folder (or from this repo on Mac):
 
 ```bash
+CMP_API_URL=http://wingyip.axoncase.com:3102 bash deploy/build-mobile-on-mac.sh
+```
+
+Or manually:
+
+```bash
+cd ~/Development/WingYipSt\ Avision\ Mobile
+cp .env.example .env   # if needed
+# set EXPO_PUBLIC_CMP_API_URL=http://192.168.10.148:3102 in .env and eas.json
 npm install -g eas-cli
-cd mobile
 npm install
 eas login
 npm run build:apk
 ```
+
+Download the APK from the EAS build page when the cloud build completes.
 
 See [README build section](README.md) in repo for push setup on CMP server.
 

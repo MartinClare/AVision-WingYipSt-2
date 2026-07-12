@@ -25,7 +25,11 @@ export async function apiFetch<T>(
   const url = path.startsWith("http") ? path : `${CMP_API_URL}${path}`;
 
   try {
-    const res = await fetch(url, { ...init, headers });
+    const controller = new AbortController();
+    const timeoutMs = 20_000;
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { ...init, headers, signal: controller.signal });
+    clearTimeout(timeout);
     const text = await res.text();
     let payload: unknown = null;
     if (text) {

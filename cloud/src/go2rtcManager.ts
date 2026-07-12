@@ -21,7 +21,9 @@ import { dirname } from 'node:path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export const GO2RTC_PORT = 1984;
+export const GO2RTC_PORT = Number(process.env.GO2RTC_PORT || 3184);
+export const GO2RTC_RTSP_PORT = Number(process.env.GO2RTC_RTSP_PORT || 8655);
+export const GO2RTC_WEBRTC_PORT = Number(process.env.GO2RTC_WEBRTC_PORT || 8656);
 export const GO2RTC_API_BASE = `http://localhost:${GO2RTC_PORT}`;
 
 // Search for the go2rtc binary in common locations
@@ -55,8 +57,9 @@ function writeConfig(streams: Record<string, string>): void {
     `  listen: ":${GO2RTC_PORT}"`,
     '  origin: "*"',
     'rtsp:',
-    '  listen: ":8555"',      // internal RTSP server (not exposed)
+    `  listen: ":${GO2RTC_RTSP_PORT}"`,      // internal RTSP server (not exposed)
     'webrtc:',
+    `  listen: ":${GO2RTC_WEBRTC_PORT}"`,
     '  ice_servers:',
     '    - urls: [stun:stun.l.google.com:19302]',
     '    - urls: [stun:stun1.l.google.com:19302]',

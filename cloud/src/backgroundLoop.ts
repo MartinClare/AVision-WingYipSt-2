@@ -164,14 +164,11 @@ let snapshotTimer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
 let heartbeatIndex = 0;
 let activeAnalysisCount = 0;
-let analysisBoostEndsAtMs: number | null = null;
 
-const STARTUP_ANALYSIS_BOOST_INTERVAL_MS = 20_000;
-const STARTUP_ANALYSIS_BOOST_WINDOW_MS = 60 * 60 * 1000;
-
-// Stability mode: leave larger gaps so the local vision server can answer
-// health checks and avoid being permanently saturated by analysis traffic.
-const ANALYSIS_PRODUCER_DELAY_MS = 20_000;
+const INITIAL_FILL_ANALYSIS_INTERVAL_MS = Math.max(
+  1,
+  parseInt(process.env.INITIAL_ANALYSIS_INTERVAL_SEC || '5', 10) || 5,
+) * 1000;
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -437,13 +434,18 @@ function getEffectiveInterval(cfg: Record<string, unknown>): number {
     configuredIntervalMs = intervalSec * 1000;
   }
 
-  // Startup boost: for the first hour after edge-cloud starts, force 20s analysis
-  // cadence so the freshly cleared system quickly repopulates reports/incidents.
-  if (analysisBoostEndsAtMs && Date.now() < analysisBoostEndsAtMs) {
-    return STARTUP_ANALYSIS_BOOST_INTERVAL_MS;
-  }
-
   return configuredIntervalMs;
+}
+
+function hasInitialResultsForAllCameras(cameras: CameraConfig[]): boolean {
+  return cameras.length > 0 && cameras.every((camera) => latestResults.has(camera.id));
+}
+
+function getNextAnalysisInterval(cfg: Record<string, unknown>, cameras: CameraConfig[]): number {
+  if (!hasInitialResultsForAllCameras(cameras)) {
+    return INITIAL_FILL_ANALYSIS_INTERVAL_MS;
+  }
+  return getEffectiveInterval(cfg);
 }
 
 async function analysisIteration(): Promise<void> {
@@ -488,7 +490,7 @@ async function analysisIteration(): Promise<void> {
       );
     }
 
-    scheduleAnalysis(ANALYSIS_PRODUCER_DELAY_MS);
+    scheduleAnalysis(getNextAnalysisInterval(cfg, cameras));
   } catch (err) {
     console.error('[backgroundLoop] analysis iteration error:', (err as Error).message);
     scheduleAnalysis(2_000);
@@ -575,7 +577,6 @@ function buildGo2RTCStreams(cfg: Record<string, unknown>): Record<string, string
 export function startBackgroundLoops(): void {
   if (running) return;
   running = true;
-  analysisBoostEndsAtMs = Date.now() + STARTUP_ANALYSIS_BOOST_WINDOW_MS;
   console.log('[backgroundLoop] Starting analysis loop + heartbeat loop + snapshot loop');
 
   const cfg = loadConfig();

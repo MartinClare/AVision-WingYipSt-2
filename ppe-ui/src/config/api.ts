@@ -3,31 +3,33 @@
  * Centralized configuration for all API endpoints.
  *
  * All backend APIs (config, analysis, deep-vision, services) are served
- * by the edge-cloud Node.js service on port 3001. In production/local
- * deploy, nginx on port 3000 proxies /api/ to 3001 so remote browsers
+ * by the edge-cloud Node.js service. In production/local
+ * deploy, nginx/dev-server proxies /api/ to edge-cloud so remote browsers
  * only need one port (Tailscale / LAN).
  *
  * Priority:
  * 1) Explicit REACT_APP_* env vars (build-time override)
- * 2) Same origin when UI is on port 3000/80/443 (nginx proxy)
- * 3) Direct edge-cloud on port 3001 (split dev without nginx)
+ * 2) Same origin when UI is on the configured UI port/80/443 (proxy)
+ * 3) Direct edge-cloud on the configured API port (split dev without nginx)
  */
 const isBrowser = typeof window !== 'undefined';
+const apiPort = process.env.REACT_APP_API_PORT || '3001';
+const uiPort = process.env.REACT_APP_UI_PORT || '3000';
 
 function resolveApiBaseUrl(): string {
   const envBase = process.env.REACT_APP_API_BASE_URL?.replace(/\/$/, '');
   if (envBase) return envBase;
 
-  if (!isBrowser) return 'http://localhost:3001';
+  if (!isBrowser) return `http://localhost:${apiPort}`;
 
   const { protocol, hostname, port, origin } = window.location;
   // UI served on standard web ports — API is proxied at /api on the same origin
-  const sameOriginUiPorts = new Set(['3000', '80', '443', '']);
+  const sameOriginUiPorts = new Set([uiPort, '80', '443', '']);
   if (sameOriginUiPorts.has(port)) {
     return origin.replace(/\/$/, '');
   }
 
-  return `${protocol}//${hostname}:3001`;
+  return `${protocol}//${hostname}:${apiPort}`;
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();

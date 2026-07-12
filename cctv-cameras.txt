@@ -1,0 +1,60 @@
+# Wing Yip CCTV cameras (from AJ Device Tools scan)
+# Format: IP<TAB>Title Name<TAB>Node
+# AVision#1 = existing cameras in app.config.json (handled by first edge computer)
+# AVision#2 = new cameras to be added (handled by this edge computer)
+
+IP Address      Title Name      Node
+192.168.10.2    B / 3           AVision#1
+192.168.10.3    B / 4           AVision#1
+192.168.10.5    B / 1           AVision#1
+192.168.10.6    B / 2           AVision#1
+192.168.10.7    G / 2           AVision#1
+192.168.10.8    G / 1           AVision#1
+192.168.10.9    G / 3           AVision#1
+192.168.10.10   F6 / 1          AVision#1
+192.168.10.11   F6 / 2          AVision#1
+192.168.10.12   F6 / 3          AVision#1
+192.168.10.13   F8 / 1          AVision#1
+192.168.10.14   F8 / 2          AVision#1
+192.168.10.15   F8 / 3          AVision#1
+192.168.10.16   F10 / 1         AVision#1
+192.168.10.17   F10 / 2         AVision#1
+192.168.10.19   F12 / 1         AVision#1
+192.168.10.20   F12 / 2         AVision#1
+192.168.10.21   ROOF / 2        AVision#1
+192.168.10.22   ROOF / 1        AVision#1
+192.168.10.23   ROOF / 3        AVision#1
+192.168.10.24   F12 / 3         AVision#1
+192.168.10.25   ROOF / 4        AVision#2
+192.168.10.26   F3 / 2          AVision#2
+192.168.10.27   F3 / 1          AVision#2
+192.168.10.28   F3 / 3          AVision#2
+192.168.10.29   F4 / 2          AVision#2
+192.168.10.30   F10 / 3         AVision#1
+192.168.10.31   F4 / 3          AVision#2
+192.168.10.32   F4 / 1          AVision#2
+192.168.10.33   F13 / 1         AVision#2
+192.168.10.34   F13 / 2         AVision#2
+192.168.10.35   F11 / 1         AVision#2
+192.168.10.36   F11 / 2         AVision#2
+192.168.10.37   F9 / 1          AVision#2
+192.168.10.38   F9 / 2          AVision#2
+192.168.10.39   F9 / 3          AVision#2
+192.168.10.40   F11 / 3         AVision#2
+192.168.10.41   F7 / 1          AVision#2
+192.168.10.42   F7 / 2          AVision#2
+192.168.10.43   F7 / 3          AVision#2
+192.168.10.44   F2 / 3          AVision#2
+192.168.10.45   F2 / 4          AVision#2
+192.168.10.46   F2 / 2          AVision#2
+192.168.10.47   F2 / 1          AVision#2
+192.168.10.48   F2 / 5          AVision#2
+192.168.10.49   F1 / 3          AVision#2
+192.168.10.50   F1 / 4          AVision#2
+192.168.10.51   F1 / 5          AVision#2
+192.168.10.52   F1 / 2          AVision#2
+192.168.10.53   F1 / 1          AVision#2
+192.168.10.54   F5 / 3          AVision#2
+192.168.10.55   F5 / 2          AVision#2
+192.168.10.56   F5 / 1          AVision#2
+192.168.10.57   F13 / 3         AVision#2

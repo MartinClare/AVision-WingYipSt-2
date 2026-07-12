@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CartesianGrid,
@@ -40,7 +41,13 @@ export function AnalyticsCharts({ snapshot }: { snapshot: AnalyticsSnapshot }) {
       {/* KPI Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard title="Total Reports (30d)" value={totalReports.toLocaleString()} sub="edge reports received" />
-        <StatCard title="High-Risk Reports" value={highRiskCount.toLocaleString()} sub={`${totalReports ? Math.round((highRiskCount / totalReports) * 100) : 0}% of total`} accent="text-red-500" />
+        <StatCard
+          title="High-Risk Reports"
+          value={highRiskCount.toLocaleString()}
+          sub={`${totalReports ? Math.round((highRiskCount / totalReports) * 100) : 0}% of total`}
+          accent="text-red-500"
+          href="/incidents?riskLevel=high,critical"
+        />
         <StatCard
           title="PPE Compliance"
           value={ppeCompliance !== null ? `${ppeCompliance}%` : "N/A"}
@@ -121,14 +128,34 @@ export function AnalyticsCharts({ snapshot }: { snapshot: AnalyticsSnapshot }) {
   );
 }
 
-function StatCard({ title, value, sub, accent }: { title: string; value: string; sub: string; accent?: string }) {
+function StatCard({
+  title,
+  value,
+  sub,
+  accent,
+  href,
+}: {
+  title: string;
+  value: string;
+  sub: string;
+  accent?: string;
+  href?: string;
+}) {
+  const valueClass = `text-3xl font-bold ${accent ?? ""}`;
+
   return (
-    <Card>
+    <Card className={href ? "transition-colors hover:bg-muted/50" : ""}>
       <CardHeader className="pb-1">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className={`text-3xl font-bold ${accent ?? ""}`}>{value}</p>
+        {href ? (
+          <Link href={href} className="block">
+            <p className={`${valueClass} text-primary underline-offset-4 hover:underline`}>{value}</p>
+          </Link>
+        ) : (
+          <p className={valueClass}>{value}</p>
+        )}
         <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
       </CardContent>
     </Card>

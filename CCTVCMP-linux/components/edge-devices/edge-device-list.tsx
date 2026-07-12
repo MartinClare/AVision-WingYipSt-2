@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatHKT } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { floorLabel, floorHeading } from "@/lib/camera-status";
 
 type Device = {
   id: string;
@@ -117,63 +118,79 @@ export function EdgeDeviceList({ devices }: { devices: Device[] }) {
     );
   }
 
+  // Group by floor, preserving order from the page
+  const groups: { floor: string; items: Device[] }[] = [];
+  for (const d of devices) {
+    const fl = floorLabel(d.name);
+    const last = groups[groups.length - 1];
+    if (last && last.floor === fl) last.items.push(d);
+    else groups.push({ floor: fl, items: [d] });
+  }
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {devices.map((d) => (
-        <Link key={d.id} href={`/edge-devices/${d.id}`} className="group block">
-          <Card className="h-full transition-all duration-150 hover:border-primary/60 hover:shadow-md group-focus-visible:ring-2 ring-primary">
-            {/* Thumbnail — served from stored DB bytes via /api/edge-devices/[id]/snapshot */}
-            <div className="relative overflow-hidden rounded-t-xl bg-muted/30 h-36">
-              <DeviceSnapshot deviceId={d.id} name={d.name} />
-              {/* Risk overlay badge */}
-              {d.latestReport && (
-                <div className="absolute top-2 right-2">
-                  {riskBadge(d.latestReport.overallRiskLevel)}
-                </div>
-              )}
-              {/* Status dot */}
-              <div className="absolute top-2 left-2 rounded-full bg-background/80 px-2 py-0.5 backdrop-blur-sm">
-                <StatusDot device={d} t={t} />
-              </div>
-            </div>
+    <div className="space-y-8">
+      {groups.map(({ floor, items }) => (
+        <div key={floor}>
+          {/* Floor heading */}
+          <div className="flex items-center gap-3 mb-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              {floorHeading(floor)}
+            </h3>
+            <span className="text-xs text-muted-foreground/50 bg-muted px-2 py-0.5 rounded-full">
+              {items.length} cam{items.length !== 1 ? "s" : ""}
+            </span>
+            <div className="flex-1 border-t border-border/40" />
+          </div>
 
-            <CardContent className="p-4 space-y-2">
-              {/* Name */}
-              <p className="font-semibold text-sm leading-tight truncate">{d.name}</p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {items.map((d) => (
+              <Link key={d.id} href={`/edge-devices/${d.id}`} className="group block">
+                <Card className="h-full transition-all duration-150 hover:border-primary/60 hover:shadow-md group-focus-visible:ring-2 ring-primary">
+                  {/* Thumbnail */}
+                  <div className="relative overflow-hidden rounded-t-xl bg-muted/30 h-36">
+                    <DeviceSnapshot deviceId={d.id} name={d.name} />
+                    {d.latestReport && (
+                      <div className="absolute top-2 right-2">
+                        {riskBadge(d.latestReport.overallRiskLevel)}
+                      </div>
+                    )}
+                    <div className="absolute top-2 left-2 rounded-full bg-background/80 px-2 py-0.5 backdrop-blur-sm">
+                      <StatusDot device={d} t={t} />
+                    </div>
+                  </div>
 
-              {/* Project / Zone */}
-              <p className="text-xs text-muted-foreground truncate">
-                {d.project?.name ?? "—"}
-                {d.zone?.name ? ` · ${d.zone.name}` : ""}
-              </p>
-
-              {(d.edgeCameraId || d.streamUrl) && (
-                <p className="text-[11px] text-muted-foreground/80 truncate">
-                  {d.edgeCameraId ?? "—"}
-                  {d.streamUrl ? ` · ${d.streamUrl}` : ""}
-                </p>
-              )}
-
-              {/* Latest description */}
-              {d.latestReport?.overallDescription && (
-                <p className="text-xs text-muted-foreground/80 line-clamp-2 leading-relaxed">
-                  {d.latestReport.overallDescription}
-                </p>
-              )}
-
-              {/* Footer stats */}
-              <div className="flex items-center justify-between pt-1 border-t border-border/50">
-                <span className="text-xs text-muted-foreground">
-                  {d.lastReportAt ? formatHKT(d.lastReportAt) : t("never")}
-                </span>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{d.reportCount} {t("rptLabel")}</span>
-                  <span>{d.incidentCount} {t("incLabel")}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+                  <CardContent className="p-4 space-y-2">
+                    <p className="font-semibold text-sm leading-tight truncate">{d.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {d.project?.name ?? "—"}
+                      {d.zone?.name ? ` · ${d.zone.name}` : ""}
+                    </p>
+                    {(d.edgeCameraId || d.streamUrl) && (
+                      <p className="text-[11px] text-muted-foreground/80 truncate">
+                        {d.edgeCameraId ?? "—"}
+                        {d.streamUrl ? ` · ${d.streamUrl}` : ""}
+                      </p>
+                    )}
+                    {d.latestReport?.overallDescription && (
+                      <p className="text-xs text-muted-foreground/80 line-clamp-2 leading-relaxed">
+                        {d.latestReport.overallDescription}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                      <span className="text-xs text-muted-foreground">
+                        {d.lastReportAt ? formatHKT(d.lastReportAt) : t("never")}
+                      </span>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{d.reportCount} {t("rptLabel")}</span>
+                        <span>{d.incidentCount} {t("incLabel")}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );

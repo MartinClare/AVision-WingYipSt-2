@@ -925,7 +925,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 {/* Quick-select presets */}
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   {(() => {
-                    const localUrl = 'http://localhost:3002/api/webhook/edge-report';
+                    const localCmpBaseUrl = (process.env.REACT_APP_CMP_BASE_URL || 'http://localhost:3002').replace(/\/$/, '');
+                    const localUrl = `${localCmpBaseUrl}/api/webhook/edge-report`;
                     const cloudUrl = configCloudCmpUrl || '';
                     const isLocal = cmpUrl === localUrl;
                     const isCloud = cloudUrl && cmpUrl === cloudUrl;
@@ -948,7 +949,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             color: isLocal ? '#00d9ff' : 'rgba(255,255,255,0.7)',
                           }}
                         >
-                          Local (localhost:3002)
+                          Local ({new URL(localCmpBaseUrl).host})
                         </button>
                         <button
                           type="button"
@@ -975,7 +976,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     setCmpUrl(e.target.value);
                     setHasChanges(true);
                   }}
-                  placeholder="http://localhost:3002/api/webhook/edge-report"
+                  placeholder={`${(process.env.REACT_APP_CMP_BASE_URL || 'http://localhost:3002').replace(/\/$/, '')}/api/webhook/edge-report`}
                   style={{
                     width: '100%',
                     padding: '0.5rem',

@@ -1,11 +1,13 @@
 {
   "name": "axon-cmp-mobile",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
+    "android:emu": "bash scripts/run-android-emulator.sh",
+    "prebuild:android": "expo prebuild --platform android",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",

@@ -91,7 +91,7 @@ interface BackendDeepVisionResult {
   analysis: GeminiAnalysisResult;
 }
 
-const CAMERA_PAGE_SIZE = 4;
+const CAMERA_PAGE_SIZE = 32;
 
 const MultiCameraGrid = forwardRef<MultiCameraGridHandle, MultiCameraGridProps>(function MultiCameraGrid(
   { analysisMode, onGeminiResult, onAlertResult },
@@ -966,70 +966,138 @@ const MultiCameraGrid = forwardRef<MultiCameraGridHandle, MultiCameraGridProps>(
             </div>
           </div>
 
-          {/* Multi-camera view: current page only, rendered as a 2x2 grid */}
-          {(
-            <div style={{ 
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: '1rem',
-              width: '100%'
-            }}>
-              {pageCameras.map((camera, index) => (
-                <div
-                  key={camera.id}
-                  style={{
-                    border: '2px solid rgba(0, 217, 255, 0.3)',
-                    borderRadius: '8px',
-                    padding: '1rem',
-                    background: 'rgba(0, 0, 0, 0.3)',
-                    minHeight: '260px',
-                    width: '100%'
-                  }}
-                >
-                  <h4 style={{ marginTop: 0, marginBottom: '0.75rem', color: '#00d9ff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    📹 {getEffectiveName(camera)}
-                    {!isEffectivelyEnabled(camera) && (
-                      <span style={{ 
-                        fontSize: '0.8rem', 
-                        color: '#ff9900',
-                        background: 'rgba(255, 153, 0, 0.1)',
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '4px',
-                        border: '1px solid rgba(255, 153, 0, 0.3)'
+          {/* Multi-camera view: grouped by floor with section headers */}
+          {(() => {
+            // Extract floor label from camera name e.g. "F1 / 2" → "F1", "ROOF / 4" → "ROOF"
+            const getFloor = (name: string) => name.split(' /')[0].trim();
+
+            // Build ordered list of [floorLabel, cameras[]] groups preserving camera order
+            const floorGroups: { floor: string; cameras: typeof pageCameras }[] = [];
+            for (const camera of pageCameras) {
+              const floor = getFloor(getEffectiveName(camera));
+              const last = floorGroups[floorGroups.length - 1];
+              if (last && last.floor === floor) {
+                last.cameras.push(camera);
+              } else {
+                floorGroups.push({ floor, cameras: [camera] });
+              }
+            }
+
+            const FLOOR_COLORS: Record<string, string> = {
+              ROOF: '#9c27b0', F13: '#e94560', F12: '#ff5722', F11: '#ff9800',
+              F10: '#ffc107', F9: '#8bc34a',  F8: '#4caf50',  F7: '#26c6da',
+              F6: '#29b6f6',  F5: '#42a5f5',  F4: '#5c6bc0',  F3: '#7e57c2',
+              F2: '#00d9ff',  F1: '#00bcd4',  G: '#4caf50',   B: '#78909c',
+            };
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+                {[...floorGroups].reverse().map(({ floor, cameras: groupCameras }) => {
+                  const color = FLOOR_COLORS[floor] ?? '#00d9ff';
+                  const floorLabel = floor === 'ROOF' ? 'Roof'
+                    : floor === 'G' ? 'Ground Floor'
+                    : floor === 'B' ? 'Basement'
+                    : `Floor ${floor.replace('F', '')}`;
+                  return (
+                    <div key={floor}>
+                      {/* Floor header */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        marginBottom: '0.75rem',
+                        paddingBottom: '0.5rem',
+                        borderBottom: `2px solid ${color}44`,
                       }}>
-                        ⚠️ Disabled
-                      </span>
-                    )}
-                  </h4>
-                  {isEffectivelyEnabled(camera) ? (
-                    renderStream(camera, index, false)
-                  ) : (
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minHeight: '250px',
-                      color: 'rgba(255,255,255,0.5)',
-                      fontSize: '1rem',
-                      border: '2px dashed rgba(255, 153, 0, 0.3)',
-                      borderRadius: '8px',
-                      background: 'rgba(255, 153, 0, 0.05)'
-                    }}>
-                      <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📹</div>
-                      <div style={{ marginBottom: '0.5rem', fontWeight: 'bold' }}>Camera Disabled</div>
-                      <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>
-                        Enable in <strong style={{ color: '#00d9ff' }}>Settings</strong> (left panel)
+                        <div style={{
+                          width: '4px',
+                          height: '1.4rem',
+                          borderRadius: '2px',
+                          background: color,
+                          boxShadow: `0 0 8px ${color}`,
+                        }} />
+                        <span style={{ color, fontWeight: 700, fontSize: '1rem', letterSpacing: '0.05em' }}>
+                          {floorLabel}
+                        </span>
+                        <span style={{
+                          fontSize: '0.8rem',
+                          color: 'rgba(255,255,255,0.4)',
+                          background: 'rgba(255,255,255,0.06)',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '10px',
+                        }}>
+                          {groupCameras.length} cam{groupCameras.length !== 1 ? 's' : ''}
+                        </span>
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.5rem' }}>
-                        ID: {camera.id}
+
+                      {/* Camera cards for this floor */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                        gap: '1rem',
+                        width: '100%',
+                      }}>
+                        {groupCameras.map((camera, index) => (
+                          <div
+                            key={camera.id}
+                            style={{
+                              border: `2px solid ${color}44`,
+                              borderRadius: '8px',
+                              padding: '1rem',
+                              background: 'rgba(0, 0, 0, 0.3)',
+                              minHeight: '260px',
+                              width: '100%',
+                            }}
+                          >
+                            <h4 style={{ marginTop: 0, marginBottom: '0.75rem', color, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              📹 {getEffectiveName(camera)}
+                              {!isEffectivelyEnabled(camera) && (
+                                <span style={{
+                                  fontSize: '0.8rem',
+                                  color: '#ff9900',
+                                  background: 'rgba(255, 153, 0, 0.1)',
+                                  padding: '0.2rem 0.5rem',
+                                  borderRadius: '4px',
+                                  border: '1px solid rgba(255, 153, 0, 0.3)'
+                                }}>
+                                  ⚠️ Disabled
+                                </span>
+                              )}
+                            </h4>
+                            {isEffectivelyEnabled(camera) ? (
+                              renderStream(camera, index, false)
+                            ) : (
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: '250px',
+                                color: 'rgba(255,255,255,0.5)',
+                                fontSize: '1rem',
+                                border: '2px dashed rgba(255, 153, 0, 0.3)',
+                                borderRadius: '8px',
+                                background: 'rgba(255, 153, 0, 0.05)'
+                              }}>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📹</div>
+                                <div style={{ marginBottom: '0.5rem', fontWeight: 'bold' }}>Camera Disabled</div>
+                                <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>
+                                  Enable in <strong style={{ color: '#00d9ff' }}>Settings</strong> (left panel)
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.5rem' }}>
+                                  ID: {camera.id}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 

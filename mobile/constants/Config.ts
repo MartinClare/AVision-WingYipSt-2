@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 export const CMP_API_URL: string =
   (Constants.expoConfig?.extra?.cmpApiUrl as string | undefined)?.replace(/\/$/, "") ||
   process.env.EXPO_PUBLIC_CMP_API_URL?.replace(/\/$/, "") ||
-  "http://localhost:3002";
+  "http://wingyip.axoncase.com:3102";
 
 export function resolveCmpAssetUrl(pathOrUrl: string | null | undefined): string | null {
   if (!pathOrUrl) return null;
