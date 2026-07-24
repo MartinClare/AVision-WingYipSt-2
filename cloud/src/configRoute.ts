@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import * as net from 'node:net';
 import { GO2RTC_PORT, isGo2RTCAvailable } from './go2rtcManager.js';
+import { checkOpenRouterHealth } from './openRouterHealthClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -341,13 +342,18 @@ async function checkGo2rtcStreams(): Promise<Record<string, boolean>> {
 }
 
 router.get('/health/all', async (_req: Request, res: Response) => {
+  const config = loadConfig();
+  const vision = config.vision as { activeModel?: string } | undefined;
+  const openRouterActive = vision?.activeModel === 'openrouter';
+
   const [
-    portEdgeCloud, portPpeUi, portCmp, portGo2rtc,
+    portEdgeCloud, portPpeUi, portCmp, portGo2rtc, openRouter,
   ] = await Promise.all([
     checkPort('localhost', EDGE_CLOUD_PORT),
     checkPort('localhost', PPE_UI_PORT),
     checkPort('localhost', CMP_PORT),
     checkPort('localhost', GO2RTC_PORT),
+    checkOpenRouterHealth(openRouterActive),
   ]);
 
   const streams = portGo2rtc ? await checkGo2rtcStreams() : {};
@@ -369,6 +375,9 @@ router.get('/health/all', async (_req: Request, res: Response) => {
       'go2rtc':          { ok: portGo2rtc,       port: GO2RTC_PORT },
       'Local vision (FastAPI)': { ok: portLocalVision, port: LOCAL_VISION_PORT },
       'Local vLLM':      { ok: portLocalVllm,   port: LOCAL_VLLM_PORT },
+    },
+    providers: {
+      openrouter: openRouter,
     },
     systemd,
     streams,

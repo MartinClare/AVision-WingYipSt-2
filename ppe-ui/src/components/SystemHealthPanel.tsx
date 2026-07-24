@@ -6,9 +6,22 @@ interface ServiceHealth {
   port: number;
 }
 
+interface ProviderHealth {
+  ok: boolean;
+  configured: boolean;
+  active: boolean;
+  totalCredits: number | null;
+  totalUsage: number | null;
+  balance: number | null;
+  error?: string;
+}
+
 interface HealthData {
   timestamp: string;
   services: Record<string, ServiceHealth>;
+  providers?: {
+    openrouter?: ProviderHealth;
+  };
   systemd: Record<string, string>;
   streams: Record<string, boolean>;
 }
@@ -59,8 +72,10 @@ const SystemHealthPanel: React.FC = () => {
     return () => clearInterval(t);
   }, [fetchHealth]);
 
+  const openRouter = data?.providers?.openrouter;
+  const providerOk = !openRouter?.active || openRouter.ok;
   const allOk = data
-    ? Object.values(data.services).every(s => s.ok)
+    ? Object.values(data.services).every(s => s.ok) && providerOk
     : false;
 
   const streamEntries = data ? Object.entries(data.streams) : [];
@@ -165,6 +180,68 @@ const SystemHealthPanel: React.FC = () => {
               </div>
             ))}
           </div>
+
+          {/* AI provider account health */}
+          {openRouter && (
+            <>
+              <div style={{
+                fontSize: '0.78rem',
+                color: 'rgba(255,255,255,0.4)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                marginBottom: '0.4rem',
+              }}>
+                AI Provider
+              </div>
+              <div style={{
+                padding: '0.65rem 0.7rem',
+                borderRadius: '6px',
+                background: statusBg(providerOk),
+                border: `1px solid ${statusBorder(providerOk)}`,
+                marginBottom: '1rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0 }}>
+                    <Dot ok={providerOk} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.85)' }}>
+                        OpenRouter {openRouter.active ? '(active)' : '(not selected)'}
+                      </div>
+                      {openRouter.error && openRouter.active && (
+                        <div style={{ marginTop: '2px', fontSize: '0.75rem', color: '#f44336' }}>
+                          {openRouter.error}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: statusColor(providerOk) }}>
+                      {!openRouter.active ? 'STANDBY' : openRouter.ok ? 'READY' : 'UNAVAILABLE'}
+                    </div>
+                    {openRouter.balance !== null && (
+                      <div style={{ marginTop: '2px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                        Balance ${openRouter.balance.toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {openRouter.totalCredits !== null && openRouter.totalUsage !== null && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '0.55rem',
+                    paddingTop: '0.5rem',
+                    borderTop: '1px solid rgba(255,255,255,0.08)',
+                    fontSize: '0.72rem',
+                    color: 'rgba(255,255,255,0.4)',
+                  }}>
+                    <span>Credits ${openRouter.totalCredits.toFixed(2)}</span>
+                    <span>Used ${openRouter.totalUsage.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Camera Streams */}
           {streamEntries.length > 0 && (

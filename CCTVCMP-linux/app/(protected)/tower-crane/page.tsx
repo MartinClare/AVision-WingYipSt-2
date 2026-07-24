@@ -1,4 +1,3 @@
-import { AutoRefresh } from "@/components/auto-refresh";
 import { TowerCraneMonitor } from "@/components/tower-crane/tower-crane-monitor";
 import { fetchTowerCraneSnapshot } from "@/lib/tower-crane";
 import { getTranslations } from "next-intl/server";
@@ -10,7 +9,6 @@ export default async function TowerCranePage() {
 
   return (
     <div className="space-y-6">
-      <AutoRefresh intervalSec={15} />
       <div>
         <h2 className="text-2xl font-semibold">{t("title")}</h2>
         <p className="text-sm text-muted-foreground">

@@ -1,0 +1,12 @@
+[Unit]
+Description=AVision daily safety review report (19:00 HKT)
+After=network-online.target avision-cmp.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/axon/avision/AVision-WIngYipSt/CCTVCMP-linux
+Environment=TZ=Asia/Hong_Kong
+Environment=REPORT_OUTPUT_DIR=/home/axon/avision/AVision-WIngYipSt/CCTVCMP-linux/data/reports
+Environment=REPORT_LOG_DIR=/home/axon/avision/AVision-WIngYipSt/CCTVCMP-linux/data/reports/logs
+ExecStart=/home/axon/avision/AVision-WIngYipSt/deploy/run-daily-safety-report.sh

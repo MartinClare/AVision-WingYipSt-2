@@ -412,6 +412,196 @@ export function buildChannelVideoUrl(
   return buildVideoUrl(baseUrl, jsession, deviceId, channelIndex, media);
 }
 
+/** Same-origin iframe URL for recorded playback via Cmsv6Player.startVodM. */
+export function buildPlaybackVideoUrl(
+  baseUrl: string,
+  playbackUrlWs: string,
+  title?: string
+): string | null {
+  if (!baseUrl || !playbackUrlWs) return null;
+  const params = new URLSearchParams({
+    mode: "playback",
+    base: baseUrl,
+    url: playbackUrlWs,
+    title: title || "Playback",
+  });
+  return `/mdvr-h5-player.html?${params.toString()}`;
+}
+
+export type TowerCraneRecording = {
+  id: string;
+  deviceId: string;
+  channel: number;
+  loc: number;
+  beg: number;
+  end: number;
+  len: number;
+  startAt: string;
+  endAt: string;
+  playbackUrlWs: string;
+};
+
+export type TowerCraneRecordingsResult = {
+  configured: boolean;
+  deviceId: string;
+  date: string;
+  loc: 1 | 2;
+  channel: number;
+  recordings: TowerCraneRecording[];
+  error: string | null;
+  errorCode: number | null;
+};
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function secondsOfDayToIso(date: string, seconds: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const sec = Math.max(0, Math.min(86399, Math.floor(seconds)));
+  const hh = Math.floor(sec / 3600);
+  const mm = Math.floor((sec % 3600) / 60);
+  const ss = sec % 60;
+  // Local wall-clock label from MDVR day/seconds (no TZ conversion).
+  return `${y}-${pad2(m)}-${pad2(d)}T${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
+}
+
+function mapVideoFileError(result: number): string {
+  switch (result) {
+    case 32:
+      return "Device is offline. Try Server storage, or wait until the crane is online.";
+    case 7:
+      return "Recording search parameters were rejected by the MDVR platform.";
+    case 8:
+      return "No authority to query recordings for this device.";
+    case 5:
+      return "MDVR session expired. Retry the search.";
+    default:
+      return `Recording search failed (result=${result}).`;
+  }
+}
+
+type MdvrVideoFile = {
+  chn?: number;
+  beg?: number;
+  end?: number;
+  len?: number;
+  loc?: number;
+  PlaybackUrlWs?: string;
+  PlaybackUrl?: string;
+  file?: string;
+  year?: number;
+  mon?: number;
+  day?: number;
+};
+
+export async function fetchTowerCraneRecordings(input: {
+  deviceId: string;
+  date: string; // YYYY-MM-DD
+  loc?: 1 | 2;
+  channel?: number; // -1 = all
+}): Promise<TowerCraneRecordingsResult> {
+  const config = getTowerCraneConfig();
+  const loc = input.loc === 2 ? 2 : 1;
+  const channel = Number.isFinite(input.channel as number) ? Number(input.channel) : -1;
+  const date = input.date?.trim() || "";
+  const deviceId = input.deviceId?.trim() || "";
+
+  const empty = (error: string | null, errorCode: number | null = null): TowerCraneRecordingsResult => ({
+    configured: config.configured,
+    deviceId,
+    date,
+    loc,
+    channel,
+    recordings: [],
+    error,
+    errorCode,
+  });
+
+  if (!config.configured) {
+    return empty(
+      "Tower crane API is not configured. Set TOWER_CRANE_API_URL, TOWER_CRANE_ACCOUNT, and TOWER_CRANE_PASSWORD."
+    );
+  }
+  if (!deviceId) return empty("deviceId is required.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return empty("date must be YYYY-MM-DD.");
+
+  const [yearStr, monStr, dayStr] = date.split("-");
+  const year = Number(yearStr);
+  const mon = Number(monStr);
+  const day = Number(dayStr);
+
+  try {
+    const session = await ensureOpenSession(config);
+    const params = new URLSearchParams({
+      jsession: session.jsession,
+      DevIDNO: deviceId,
+      LOC: String(loc),
+      CHN: String(channel),
+      YEAR: String(year),
+      MON: String(mon),
+      DAY: String(day),
+      RECTYPE: "-1",
+      FILEATTR: "2",
+      BEG: "0",
+      END: "86399",
+      ARM1: "0",
+      ARM2: "0",
+      RES: "0",
+      STREAM: "0",
+      STORE: "0",
+    });
+    const url = `${config.baseUrl}/808gps/StandardApiAction_getVideoFileInfo.action?${params.toString()}`;
+    const { json, status } = await rawFetch(url);
+    if (status >= 400) {
+      return empty(`Tower crane API HTTP ${status} on getVideoFileInfo`);
+    }
+    const data = json as { result?: number; files?: MdvrVideoFile[]; message?: string };
+    const result = typeof data.result === "number" ? data.result : -1;
+    if (result !== 0) {
+      return empty(data.message || mapVideoFileError(result), result);
+    }
+
+    const files = Array.isArray(data.files) ? data.files : [];
+    const recordings: TowerCraneRecording[] = [];
+    for (const file of files) {
+      const playbackUrlWs = (file.PlaybackUrlWs || "").trim() || (file.PlaybackUrl || "").replace(/^http/i, "ws");
+      if (!playbackUrlWs) continue;
+      const chn = asNumber(file.chn) ?? 0;
+      const beg = asNumber(file.beg) ?? 0;
+      const end = asNumber(file.end) ?? beg;
+      const len = asNumber(file.len) ?? 0;
+      const fileLoc = asNumber(file.loc) ?? loc;
+      recordings.push({
+        id: `${deviceId}:${chn}:${beg}:${end}:${file.file || playbackUrlWs}`,
+        deviceId,
+        channel: chn,
+        loc: fileLoc,
+        beg,
+        end,
+        len,
+        startAt: secondsOfDayToIso(date, beg),
+        endAt: secondsOfDayToIso(date, end),
+        playbackUrlWs,
+      });
+    }
+    recordings.sort((a, b) => a.beg - b.beg || a.channel - b.channel);
+    return {
+      configured: true,
+      deviceId,
+      date,
+      loc,
+      channel,
+      recordings,
+      error: null,
+      errorCode: 0,
+    };
+  } catch (err) {
+    clearSessions();
+    return empty(err instanceof Error ? err.message : "Unknown recording search error");
+  }
+}
+
 async function fetchSnapshotOnce(config: TowerCraneConfig): Promise<TowerCraneSnapshot> {
   const fetchedAt = new Date().toISOString();
   const session = await ensureWebSession(config);

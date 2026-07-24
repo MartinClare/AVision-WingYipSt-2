@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Live Video</title>
+  <title>Video</title>
   <style>
     html, body {
       margin: 0;
@@ -73,6 +73,21 @@
         });
       }
 
+      function parseWsEndpoint(wsUrl) {
+        try {
+          // URL() accepts http(s); map ws→http for parsing only.
+          var u = new URL(wsUrl.replace(/^ws/i, "http"));
+          return {
+            host: u.hostname,
+            port: parseInt(u.port || "6604", 10) || 6604,
+          };
+        } catch (e) {
+          return null;
+        }
+      }
+
+      var mode = (qp("mode") || "live").toLowerCase();
+      var isPlayback = mode === "playback" || mode === "vod";
       var base = (qp("base") || "").replace(/\/$/, "");
       var jsession = qp("jsession");
       var devIdno = qp("devIdno");
@@ -81,11 +96,30 @@
       // Supplier monitor defaults to sub-stream (1)
       var stream = parseInt(qp("stream") || "1", 10);
       if (isNaN(stream)) stream = 1;
-      var title = qp("title") || (devIdno + " - CH" + (channel + 1));
+      var title = qp("title") || (isPlayback ? "Playback" : (devIdno + " - CH" + (channel + 1)));
       var mediaHost = qp("mediaHost");
       var mediaPort = parseInt(qp("mediaPort") || "6605", 10) || 6605;
+      var vodUrl = qp("url");
 
-      if (!base || !jsession || !devIdno) {
+      if (!base) {
+        setStatus("Missing base URL.");
+        return;
+      }
+      if (isPlayback) {
+        if (!vodUrl) {
+          setStatus("Missing playback url.");
+          return;
+        }
+        // Use MDVR PlaybackUrlWs directly (ws://media:6604/...). A CMP-side
+        // :3104 proxy was tried earlier but is not reachable from clients even
+        // though :6604 itself is — forcing the proxy caused persistent black screens.
+        var vodEp = parseWsEndpoint(vodUrl);
+        if (vodEp) {
+          mediaHost = vodEp.host;
+          mediaPort = vodEp.port;
+        }
+        setStatus("Starting playback…");
+      } else if (!jsession || !devIdno) {
         setStatus("Missing base, jsession, or devIdno.");
         return;
       }
@@ -113,10 +147,22 @@
       }
 
       function playerApi() {
-        if (swfobject && typeof swfobject.startVideo === "function") return swfobject;
-        if (swfobject && typeof swfobject.getObjectById === "function") {
+        if (!swfobject) return null;
+        if (isPlayback) {
+          if (typeof swfobject.startVodM === "function" || typeof swfobject.startVod === "function") {
+            return swfobject;
+          }
+        } else if (typeof swfobject.startVideo === "function") {
+          return swfobject;
+        }
+        if (typeof swfobject.getObjectById === "function") {
           var obj = swfobject.getObjectById("cmsv6flash");
-          if (obj && typeof obj.startVideo === "function") return obj;
+          if (!obj) return null;
+          if (isPlayback) {
+            if (typeof obj.startVodM === "function" || typeof obj.startVod === "function") return obj;
+          } else if (typeof obj.startVideo === "function") {
+            return obj;
+          }
         }
         return null;
       }
@@ -126,7 +172,7 @@
         return new Promise(function (resolve, reject) {
           (function tick() {
             var api = playerApi();
-            if (api && typeof api.setWindowNum === "function" && typeof api.startVideo === "function") {
+            if (api && typeof api.setWindowNum === "function") {
               resolve(api);
               return;
             }
@@ -141,18 +187,69 @@
 
       function start(api) {
         try {
-          // Match supplier ttxvideo-h5 init: allocate windows then shrink to 1.
+          // Match supplier init: create windows then select current count.
           if (typeof api.setWindowNum === "function") {
             try { api.setWindowNum(36); } catch (e1) { /* optional */ }
             api.setWindowNum(1);
           }
-          if (typeof api.setServerInfo === "function") {
+          // Live needs setServerInfo. For VOD the PlaybackUrlWs already contains
+          // host:port — setting a mismatched server here can leave a black pane.
+          if (!isPlayback && typeof api.setServerInfo === "function") {
             api.setServerInfo(mediaHost, mediaPort);
           }
           if (typeof api.setVideoInfo === "function") api.setVideoInfo(0, title);
           if (typeof api.setBufferTime === "function") {
             try { api.setBufferTime(0, 2, 4); } catch (e2) { /* optional */ }
           }
+
+          // Surface player/net errors instead of a silent black pane.
+          if (typeof api.addEventListener === "function") {
+            try {
+              api.addEventListener("onTtxVideoMsg", function (index, type) {
+                if (!type) return;
+                if (type === "start" || type === "play" || type === "playing") {
+                  setStatus("");
+                  return;
+                }
+                if (
+                  type === "loadFailure" ||
+                  type === "playFailure" ||
+                  type === "neterror" ||
+                  type === "error"
+                ) {
+                  setStatus("Playback " + type);
+                }
+              });
+            } catch (eMsg) { /* optional */ }
+          }
+
+          if (isPlayback) {
+            // Supplier videoExampleH5: stopVodM then startVodM(url, "").
+            // Requires isVodMode:true on the Cmsv6Player constructor.
+            if (typeof api.stopVodM === "function") {
+              try { api.stopVodM(); } catch (e3) { /* optional */ }
+            }
+            setTimeout(function () {
+              try {
+                if (typeof api.startVodM === "function") {
+                  // "" => single-channel path that keeps PLAYCHN from the WS URL
+                  api.startVodM(vodUrl, "");
+                } else if (typeof api.startVod === "function") {
+                  api.startVod(0, vodUrl);
+                } else {
+                  throw new Error("Playback API not available");
+                }
+                started = true;
+                // Keep a short hint; device files often buffer ~3s before first frame.
+                setStatus("Buffering playback…");
+                setTimeout(function () { setStatus(""); }, 5000);
+              } catch (err2) {
+                setStatus(err2 && err2.message ? err2.message : String(err2));
+              }
+            }, 200);
+            return;
+          }
+
           // Same signature as supplier ttxplayer-h5.js
           api.startVideo(0, jsession, devIdno, channel, stream, true);
           started = true;
@@ -174,11 +271,13 @@
             throw new Error("Cmsv6Player not available");
           }
           var dim = size();
+          // Critical: playback requires isVodMode (supplier videoExampleH5.html).
           swfobject = new Cmsv6Player({
             domId: "cmsv6flash",
             width: dim.width,
             height: dim.height,
             lang: "zh-cn",
+            isVodMode: !!isPlayback,
           });
           return waitReady(20000);
         })

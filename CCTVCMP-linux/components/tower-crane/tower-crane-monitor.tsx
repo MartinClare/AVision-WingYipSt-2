@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,19 @@ import {
   upsertDeviceAlias,
   type TowerCraneAliases,
 } from "@/lib/tower-crane-aliases-shared";
-import { Check, ChevronDown, ChevronRight, MapPin, Pencil, Radio, Video, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  MapPin,
+  Pencil,
+  Radio,
+  Search,
+  Video,
+  X,
+} from "lucide-react";
 
 export type MonitorChannel = { index: number; name: string; platformName?: string };
 
@@ -57,7 +70,42 @@ type PlayingSlot = {
   channelIndex: number;
   channelName: string;
   url: string;
+  kind: "live" | "playback";
 };
+
+type RecordingRow = {
+  id: string;
+  deviceId: string;
+  channel: number;
+  loc: number;
+  beg: number;
+  end: number;
+  len: number;
+  startAt: string;
+  endAt: string;
+  playbackUrlWs: string;
+};
+
+function todayLocalDate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatClock(isoLocal: string) {
+  const m = isoLocal.match(/T(\d{2}:\d{2}:\d{2})$/);
+  return m?.[1] || isoLocal;
+}
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
 
 function deviceLabel(device: Pick<MonitorDevice, "displayName" | "vehiIdno">) {
   return device.displayName?.trim() || device.vehiIdno;
@@ -78,6 +126,7 @@ function buildVideoUrl(
 ): string | null {
   if (!apiUrl || !jsession) return null;
   const params = new URLSearchParams({
+    mode: "live",
     base: apiUrl,
     jsession,
     devIdno: deviceId,
@@ -85,6 +134,17 @@ function buildVideoUrl(
     title: channelName || `${deviceId} - CH${channelIndex + 1}`,
     mediaHost: mediaHost || "",
     mediaPort: String(mediaPort || 6605),
+  });
+  return `/mdvr-h5-player.html?${params.toString()}`;
+}
+
+function buildPlaybackUrl(apiUrl: string | null, playbackUrlWs: string, title: string): string | null {
+  if (!apiUrl || !playbackUrlWs) return null;
+  const params = new URLSearchParams({
+    mode: "playback",
+    base: apiUrl,
+    url: playbackUrlWs,
+    title,
   });
   return `/mdvr-h5-player.html?${params.toString()}`;
 }
@@ -234,16 +294,39 @@ export function TowerCraneMonitor({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(devices[0]?.deviceId ?? null);
   const [playing, setPlaying] = useState<PlayingSlot[]>([]);
-  const [viewMode, setViewMode] = useState<"split" | "video" | "map">("split");
+  const [viewMode, setViewMode] = useState<"split" | "video" | "map">(() => {
+    if (typeof window === "undefined") return "split";
+    const saved = window.localStorage.getItem("tower-crane-view-mode");
+    return saved === "split" || saved === "video" || saved === "map" ? saved : "split";
+  });
   const [localDevices, setLocalDevices] = useState(devices);
   const [aliases, setAliases] = useState<TowerCraneAliases>({ devices: {} });
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [mediaMode, setMediaMode] = useState<"live" | "playback">("live");
+  const [playbackDate, setPlaybackDate] = useState(todayLocalDate);
+  // Default to server storage — device SD (LOC=1) often needs the crane online
+  // and uses 1078 file paths that are slower/flakier to start than CMS MP4s.
+  const [playbackLoc, setPlaybackLoc] = useState<1 | 2>(2);
+  const [playbackChannel, setPlaybackChannel] = useState<number>(-1);
+  const [recordings, setRecordings] = useState<RecordingRow[]>([]);
+  const [recordingsLoading, setRecordingsLoading] = useState(false);
+  const [recordingsError, setRecordingsError] = useState<string | null>(null);
+  const [recordingsErrorCode, setRecordingsErrorCode] = useState<number | null>(null);
+
+  useEffect(() => {
+    window.localStorage.setItem("tower-crane-view-mode", viewMode);
+  }, [viewMode]);
 
   useEffect(() => {
     setLocalDevices(devices);
   }, [devices]);
+
+  const selectedDevice = useMemo(
+    () => localDevices.find((d) => d.deviceId === selectedDeviceId) ?? null,
+    [localDevices, selectedDeviceId]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -285,7 +368,7 @@ export function TowerCraneMonitor({
     }));
     if (!selectedDeviceId) setSelectedDeviceId(prefer.deviceId);
     // Auto-play CH1 of the first online crane only (single-channel pane)
-    if (playing.length === 0 && openJsession) {
+    if (playing.length === 0 && openJsession && mediaMode === "live") {
       const ch = prefer.channels[0] ?? { index: 0, name: "CH1" };
       const url = buildVideoUrl(apiUrl, openJsession, prefer.deviceId, ch.index, ch.name, mediaHost, mediaPort);
       if (url) {
@@ -298,6 +381,7 @@ export function TowerCraneMonitor({
             channelIndex: ch.index,
             channelName: ch.name,
             url,
+            kind: "live",
           },
         ]);
       }
@@ -306,6 +390,10 @@ export function TowerCraneMonitor({
   }, [localDevices, apiUrl, openJsession, mediaHost, mediaPort]);
 
   function togglePlay(device: MonitorDevice, channel: MonitorChannel) {
+    if (mediaMode !== "live") {
+      setSelectedDeviceId(device.deviceId);
+      return;
+    }
     const key = `${device.deviceId}:${channel.index}`;
     setSelectedDeviceId(device.deviceId);
     setPlaying((prev) => {
@@ -323,10 +411,80 @@ export function TowerCraneMonitor({
           channelIndex: channel.index,
           channelName: channel.name,
           url,
+          kind: "live" as const,
         },
       ];
       // Keep up to 9 panes like supplier 3x3
       return next.slice(-9);
+    });
+  }
+
+  async function searchRecordings() {
+    if (!selectedDeviceId) {
+      setRecordingsError(t("playbackSelectDevice"));
+      setRecordingsErrorCode(null);
+      setRecordings([]);
+      return;
+    }
+    setRecordingsLoading(true);
+    setRecordingsError(null);
+    setRecordingsErrorCode(null);
+    try {
+      const params = new URLSearchParams({
+        deviceId: selectedDeviceId,
+        date: playbackDate,
+        loc: String(playbackLoc),
+        channel: String(playbackChannel),
+      });
+      const res = await fetch(`/api/tower-crane/recordings?${params.toString()}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json.message || `Search failed (${res.status})`);
+      }
+      const data = json.data as {
+        recordings?: RecordingRow[];
+        error?: string | null;
+        errorCode?: number | null;
+      };
+      if (data.error) {
+        setRecordings([]);
+        setRecordingsError(data.error);
+        setRecordingsErrorCode(typeof data.errorCode === "number" ? data.errorCode : null);
+        return;
+      }
+      setRecordings(Array.isArray(data.recordings) ? data.recordings : []);
+    } catch (err) {
+      setRecordings([]);
+      setRecordingsError(err instanceof Error ? err.message : t("playbackEmpty"));
+      setRecordingsErrorCode(null);
+    } finally {
+      setRecordingsLoading(false);
+    }
+  }
+
+  function playRecording(row: RecordingRow) {
+    const device = localDevices.find((d) => d.deviceId === row.deviceId);
+    const chName =
+      device?.channels.find((c) => c.index === row.channel)?.name || `CH${row.channel + 1}`;
+    const title = `${device ? deviceLabel(device) : row.deviceId} · ${chName} · ${formatClock(row.startAt)}`;
+    const url = buildPlaybackUrl(apiUrl, row.playbackUrlWs, title);
+    if (!url) return;
+    const key = `pb:${row.id}`;
+    setPlaying((prev) => {
+      const without = prev.filter((p) => p.key !== key);
+      return [
+        ...without,
+        {
+          key,
+          deviceId: row.deviceId,
+          vehiIdno: device?.vehiIdno || row.deviceId,
+          displayName: device ? deviceLabel(device) : row.deviceId,
+          channelIndex: row.channel,
+          channelName: `${chName} · ${formatClock(row.startAt)}–${formatClock(row.endAt)}`,
+          url,
+          kind: "playback" as const,
+        },
+      ].slice(-9);
     });
   }
 
@@ -399,6 +557,7 @@ TOWER_CRANE_PASSWORD=********`}
 
   return (
     <div className="space-y-4">
+      <AutoRefresh intervalSec={15} enabled={mediaMode === "live"} />
       <div className="flex flex-wrap items-center gap-3">
         {connected ? <Badge>{t("connected")}</Badge> : <Badge variant="destructive">{t("disconnected")}</Badge>}
         <span className="text-sm text-muted-foreground">
@@ -421,7 +580,26 @@ TOWER_CRANE_PASSWORD=********`}
       ) : null}
       <p className="text-xs text-muted-foreground">{t("renameHint")}</p>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ["live", t("mediaLive")],
+            ["playback", t("mediaPlayback")],
+          ] as const
+        ).map(([mode, label]) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setMediaMode(mode)}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs font-medium",
+              mediaMode === mode ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="mx-1 hidden h-6 w-px bg-border sm:inline-block" />
         {(
           [
             ["split", t("modeSplit")],
@@ -631,64 +809,211 @@ TOWER_CRANE_PASSWORD=********`}
           )}
         >
           {viewMode !== "map" ? (
-            <Card className="overflow-hidden">
-              <CardHeader className="border-b border-border py-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Video className="h-4 w-4" />
-                  {t("liveVideo")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3">
-                {playing.length === 0 ? (
-                  <div className="flex min-h-[280px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-                    {t("selectChannel")}
-                  </div>
-                ) : (
-                  <div
-                    className={cn(
-                      "grid gap-2",
-                      playing.length === 1 ? "grid-cols-1" : playing.length <= 4 ? "grid-cols-2" : "grid-cols-3"
-                    )}
-                  >
-                    {playing.map((slot) => (
-                      <div key={slot.key} className="overflow-hidden rounded-lg border border-border bg-black">
-                        <div className="flex items-center justify-between bg-black/80 px-2 py-1 text-[11px] text-white">
-                          <span className="truncate">
-                            {slot.displayName} · {slot.channelName}
-                          </span>
-                          <button
-                            type="button"
-                            className="text-white/70 hover:text-white"
-                            onClick={() => setPlaying((prev) => prev.filter((p) => p.key !== slot.key))}
-                          >
-                            ✕
-                          </button>
+            <div className="space-y-4">
+              <Card className="overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 border-b border-border py-3">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Video className="h-4 w-4" />
+                    {mediaMode === "playback" ? t("mediaPlayback") : t("liveVideo")}
+                  </CardTitle>
+                  {viewMode === "video" ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1.5 text-xs"
+                      onClick={() => setViewMode("split")}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      {t("showMap")}
+                    </Button>
+                  ) : null}
+                </CardHeader>
+                <CardContent className="p-3">
+                  {playing.length === 0 ? (
+                    <div className="flex min-h-[280px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                      {mediaMode === "playback" ? t("playbackSelectDevice") : t("selectChannel")}
+                    </div>
+                  ) : (
+                    <div
+                      className={cn(
+                        "grid gap-2",
+                        playing.length === 1 ? "grid-cols-1" : playing.length <= 4 ? "grid-cols-2" : "grid-cols-3"
+                      )}
+                    >
+                      {playing.map((slot) => (
+                        <div key={slot.key} className="overflow-hidden rounded-lg border border-border bg-black">
+                          <div className="flex items-center justify-between bg-black/80 px-2 py-1 text-[11px] text-white">
+                            <span className="truncate">
+                              {slot.kind === "playback" ? `${t("mediaPlayback")} · ` : ""}
+                              {slot.displayName} · {slot.channelName}
+                            </span>
+                            <button
+                              type="button"
+                              className="text-white/70 hover:text-white"
+                              onClick={() => setPlaying((prev) => prev.filter((p) => p.key !== slot.key))}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <iframe
+                            title={`${slot.vehiIdno}-${slot.channelName}`}
+                            src={slot.url}
+                            className="aspect-video min-h-[200px] w-full bg-black"
+                            allow="autoplay; fullscreen; microphone; camera"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          />
                         </div>
-                        <iframe
-                          title={`${slot.vehiIdno}-${slot.channelName}`}
-                          src={slot.url}
-                          className="aspect-video min-h-[200px] w-full bg-black"
-                          allow="autoplay; fullscreen; microphone; camera"
-                          referrerPolicy="no-referrer-when-downgrade"
+                      ))}
+                    </div>
+                  )}
+                  {mediaMode === "live" && !openJsession ? (
+                    <p className="mt-2 text-xs text-muted-foreground">{t("videoSessionHint")}</p>
+                  ) : null}
+                </CardContent>
+              </Card>
+
+              {mediaMode === "playback" ? (
+                <Card className="overflow-hidden">
+                  <CardHeader className="border-b border-border py-3">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <Search className="h-4 w-4" />
+                      {t("playbackResults")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 p-3">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <label className="space-y-1 text-xs text-muted-foreground">
+                        <span>{t("playbackDate")}</span>
+                        <Input
+                          type="date"
+                          value={playbackDate}
+                          onChange={(e) => setPlaybackDate(e.target.value)}
+                          className="h-8 w-[160px]"
                         />
+                      </label>
+                      <label className="space-y-1 text-xs text-muted-foreground">
+                        <span>{t("playbackStorage")}</span>
+                        <select
+                          value={playbackLoc}
+                          onChange={(e) => setPlaybackLoc(Number(e.target.value) === 2 ? 2 : 1)}
+                          className="flex h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                        >
+                          <option value={1}>{t("playbackStorageDevice")}</option>
+                          <option value={2}>{t("playbackStorageServer")}</option>
+                        </select>
+                      </label>
+                      <label className="space-y-1 text-xs text-muted-foreground">
+                        <span>{t("playbackChannel")}</span>
+                        <select
+                          value={playbackChannel}
+                          onChange={(e) => setPlaybackChannel(Number(e.target.value))}
+                          className="flex h-8 min-w-[120px] rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                        >
+                          <option value={-1}>{t("playbackChannelAll")}</option>
+                          {(selectedDevice?.channels || []).map((ch) => (
+                            <option key={ch.index} value={ch.index}>
+                              {ch.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-8 gap-1.5"
+                        disabled={recordingsLoading || !selectedDeviceId}
+                        onClick={() => void searchRecordings()}
+                      >
+                        <Search className="h-3.5 w-3.5" />
+                        {recordingsLoading ? t("playbackSearching") : t("playbackSearch")}
+                      </Button>
+                    </div>
+                    {!selectedDeviceId ? (
+                      <p className="text-xs text-muted-foreground">{t("playbackSelectDevice")}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {deviceLabel(selectedDevice || { displayName: "", vehiIdno: selectedDeviceId })}
+                        {selectedDevice && !selectedDevice.online && playbackLoc === 1
+                          ? ` · ${t("playbackOfflineHint")}`
+                          : ""}
+                      </p>
+                    )}
+                    {recordingsError ? (
+                      <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+                        {recordingsError}
+                        {recordingsErrorCode === 32 ? ` ${t("playbackOfflineHint")}` : ""}
                       </div>
-                    ))}
-                  </div>
-                )}
-                {!openJsession ? (
-                  <p className="mt-2 text-xs text-muted-foreground">{t("videoSessionHint")}</p>
-                ) : null}
-              </CardContent>
-            </Card>
+                    ) : null}
+                    <div className="overflow-x-auto rounded-md border border-border">
+                      <table className="w-full min-w-[640px] text-left text-sm">
+                        <thead className="bg-muted/50 text-xs text-muted-foreground">
+                          <tr>
+                            <th className="px-3 py-2 font-medium">{t("colPlaybackStart")}</th>
+                            <th className="px-3 py-2 font-medium">{t("colPlaybackEnd")}</th>
+                            <th className="px-3 py-2 font-medium">{t("colPlaybackChannel")}</th>
+                            <th className="px-3 py-2 font-medium">{t("colPlaybackSize")}</th>
+                            <th className="px-3 py-2 font-medium">{t("colPlaybackAction")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recordings.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                                {recordingsLoading ? t("playbackSearching") : t("playbackEmpty")}
+                              </td>
+                            </tr>
+                          ) : (
+                            recordings.map((row) => (
+                              <tr key={row.id} className="border-t border-border hover:bg-muted/40">
+                                <td className="px-3 py-2 whitespace-nowrap">{formatClock(row.startAt)}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{formatClock(row.endAt)}</td>
+                                <td className="px-3 py-2">
+                                  {selectedDevice?.channels.find((c) => c.index === row.channel)?.name ||
+                                    `CH${row.channel + 1}`}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap">{formatBytes(row.len)}</td>
+                                <td className="px-3 py-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    onClick={() => playRecording(row)}
+                                  >
+                                    {t("playbackPlay")}
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </div>
           ) : null}
 
           {viewMode !== "video" ? (
             <Card className="overflow-hidden">
-              <CardHeader className="border-b border-border py-3">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 border-b border-border py-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <MapPin className="h-4 w-4" />
                   {t("mapMode")}
                 </CardTitle>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={() => setViewMode("video")}
+                  title={t("hideMap")}
+                >
+                  <EyeOff className="h-3.5 w-3.5" />
+                  {t("hideMap")}
+                </Button>
               </CardHeader>
               <CardContent className="p-3">
                 <CraneMap devices={localDevices} selectedId={selectedDeviceId} />
