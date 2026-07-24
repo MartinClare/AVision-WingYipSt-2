@@ -52,8 +52,15 @@ export type CmpModule =
       href: "/tower-crane";
     }
   | {
-      id: Exclude<ModuleId, "avision" | "tower-crane">;
-      i18nKey: Exclude<ModuleId, "avision" | "tower-crane">;
+      id: "restricted-zone";
+      i18nKey: "restricted-zone";
+      icon: LucideIcon;
+      type: "internal";
+      href: "/restricted-zone";
+    }
+  | {
+      id: Exclude<ModuleId, "avision" | "tower-crane" | "restricted-zone">;
+      i18nKey: Exclude<ModuleId, "avision" | "tower-crane" | "restricted-zone">;
       icon: LucideIcon;
       type: "external";
       /** When set, the module page embeds this URL in an iframe. */
@@ -94,7 +101,8 @@ export const CMP_MODULES: CmpModule[] = [
     id: "restricted-zone",
     i18nKey: "restricted-zone",
     icon: MapPin,
-    type: "external",
+    type: "internal",
+    href: "/restricted-zone",
   },
   {
     id: "mobile-machine",

@@ -1,0 +1,45 @@
+api:
+  listen: ":3184"
+  origin: "*"
+rtsp:
+  listen: ":8655"
+webrtc:
+  listen: ":8656"
+  ice_servers:
+    - urls: [stun:stun.l.google.com:19302]
+    - urls: [stun:stun1.l.google.com:19302]
+ffmpeg:
+  bin: ffmpeg
+streams:
+  av2_camera1: "rtsp://admin:123456@192.168.10.53:554/Streaming/Channels/101"
+  av2_camera2: "rtsp://admin:123456@192.168.10.52:554/Streaming/Channels/101"
+  av2_camera3: "rtsp://admin:123456@192.168.10.49:554/Streaming/Channels/101"
+  av2_camera4: "rtsp://admin:123456@192.168.10.50:554/Streaming/Channels/101"
+  av2_camera5: "rtsp://admin:123456@192.168.10.51:554/Streaming/Channels/101"
+  av2_camera6: "rtsp://admin:123456@192.168.10.47:554/Streaming/Channels/101"
+  av2_camera7: "rtsp://admin:123456@192.168.10.46:554/Streaming/Channels/101"
+  av2_camera8: "rtsp://admin:123456@192.168.10.44:554/Streaming/Channels/101"
+  av2_camera9: "rtsp://admin:123456@192.168.10.45:554/Streaming/Channels/101"
+  av2_camera10: "rtsp://admin:123456@192.168.10.48:554/Streaming/Channels/101"
+  av2_camera11: "rtsp://admin:123456@192.168.10.27:554/Streaming/Channels/101"
+  av2_camera12: "rtsp://admin:123456@192.168.10.26:554/Streaming/Channels/101"
+  av2_camera13: "rtsp://admin:123456@192.168.10.28:554/Streaming/Channels/101"
+  av2_camera14: "rtsp://admin:123456@192.168.10.32:554/Streaming/Channels/101"
+  av2_camera15: "rtsp://admin:123456@192.168.10.29:554/Streaming/Channels/101"
+  av2_camera16: "rtsp://admin:123456@192.168.10.31:554/Streaming/Channels/101"
+  av2_camera17: "rtsp://admin:123456@192.168.10.56:554/Streaming/Channels/101"
+  av2_camera18: "rtsp://admin:123456@192.168.10.55:554/Streaming/Channels/101"
+  av2_camera19: "rtsp://admin:123456@192.168.10.54:554/Streaming/Channels/101"
+  av2_camera20: "rtsp://admin:123456@192.168.10.41:554/Streaming/Channels/101"
+  av2_camera21: "rtsp://admin:123456@192.168.10.42:554/Streaming/Channels/101"
+  av2_camera22: "rtsp://admin:123456@192.168.10.43:554/Streaming/Channels/101"
+  av2_camera23: "rtsp://admin:123456@192.168.10.37:554/Streaming/Channels/101"
+  av2_camera24: "rtsp://admin:123456@192.168.10.38:554/Streaming/Channels/101"
+  av2_camera25: "rtsp://admin:123456@192.168.10.39:554/Streaming/Channels/101"
+  av2_camera26: "rtsp://admin:123456@192.168.10.35:554/Streaming/Channels/101"
+  av2_camera27: "rtsp://admin:123456@192.168.10.36:554/Streaming/Channels/101"
+  av2_camera28: "rtsp://admin:123456@192.168.10.40:554/Streaming/Channels/101"
+  av2_camera29: "rtsp://admin:123456@192.168.10.33:554/Streaming/Channels/101"
+  av2_camera30: "rtsp://admin:123456@192.168.10.34:554/Streaming/Channels/101"
+  av2_camera31: "rtsp://admin:123456@192.168.10.57:554/Streaming/Channels/101"
+  av2_camera32: "rtsp://admin:123456@192.168.10.25:554/Streaming/Channels/101"

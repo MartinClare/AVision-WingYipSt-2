@@ -16,11 +16,14 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   async rewrites() {
+    const go2rtcOrigin = (process.env.GO2RTC_URL || "http://127.0.0.1:3184").replace(/\/+$/, "");
     return [
       // Proxy MDVR static/player assets so Cmsv6Player can load same-origin.
       { source: "/mdvr-proxy/:path*", destination: `${mdvrOrigin}/:path*` },
       // Decoder wasm is requested from site root by cmsv6player.
       { source: "/libcmsv6decode.wasm", destination: `${mdvrOrigin}/libcmsv6decode.wasm` },
+      // Restricted-zone live CCTV via local go2rtc (not AVision AI cameras).
+      { source: "/go2rtc/:path*", destination: `${go2rtcOrigin}/:path*` },
     ];
   },
 };

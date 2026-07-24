@@ -346,5 +346,15 @@
     "renameDevice": "Rename crane",
     "renameChannel": "Rename channel",
     "renameSaveFailed": "Could not save the name. Try again."
+  },
+  "restrictedZone": {
+    "title": "Restricted Zone",
+    "subtitle": "Live CCTV — {count} camera(s)",
+    "liveCctv": "Live CCTV",
+    "cameraList": "Cameras",
+    "cameraCount": "{count} cameras",
+    "selectCamera": "Select a camera to view live video.",
+    "noCamerasTitle": "No cameras configured",
+    "noCamerasBody": "Add cameras to the restricted-zone module config and go2rtc."
   }
 }

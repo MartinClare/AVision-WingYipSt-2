@@ -86,6 +86,7 @@ export const config = {
     "/reports/:path*",
     "/settings/:path*",
     "/tower-crane/:path*",
+    "/restricted-zone/:path*",
     "/modules/:path*",
     "/signin",
     "/signup",

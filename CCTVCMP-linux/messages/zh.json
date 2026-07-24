@@ -346,5 +346,15 @@
     "renameDevice": "重新命名塔吊",
     "renameChannel": "重新命名通道",
     "renameSaveFailed": "無法儲存名稱，請再試一次。"
+  },
+  "restrictedZone": {
+    "title": "限制區域",
+    "subtitle": "即時閉路電視 — {count} 路攝影機",
+    "liveCctv": "即時閉路電視",
+    "cameraList": "攝影機列表",
+    "cameraCount": "{count} 路攝影機",
+    "selectCamera": "請選擇攝影機以觀看即時畫面。",
+    "noCamerasTitle": "尚未設定攝影機",
+    "noCamerasBody": "請在限制區域模組與 go2rtc 中加入攝影機。"
   }
 }

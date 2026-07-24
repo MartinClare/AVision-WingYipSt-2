@@ -10,6 +10,8 @@ export const routeRoleMap: Record<string, Role[]> = {
   "/reports": [Role.admin, Role.project_manager, Role.safety_officer],
   "/settings": [Role.admin, Role.project_manager],
   "/tower-crane": [Role.admin, Role.project_manager, Role.safety_officer, Role.viewer],
+  "/restricted-zone": [Role.admin, Role.project_manager, Role.safety_officer, Role.viewer],
+  "/api/restricted-zone": [Role.admin, Role.project_manager, Role.safety_officer, Role.viewer],
   "/modules": [Role.admin, Role.project_manager, Role.safety_officer, Role.viewer],
   "/api/tower-crane": [Role.admin, Role.project_manager, Role.safety_officer, Role.viewer],
   "/api/incidents": [Role.admin, Role.project_manager, Role.safety_officer, Role.viewer],
