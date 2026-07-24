@@ -5,23 +5,17 @@ import { RiskBreakdown } from "@/components/dashboard/risk-breakdown";
 import { AlertFeed } from "@/components/dashboard/alert-feed";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { ONLINE_THRESHOLD_MS, shouldDisplayEdgeCamera, sortByFloor } from "@/lib/camera-status";
+import {
+  INCIDENT_CATEGORY_MAP,
+  RISK_CATEGORY_ICONS,
+  type RiskCategoryKey,
+} from "@/lib/incident-categories";
 import { getTranslations } from "next-intl/server";
-
-const CATEGORY_MAP: Record<string, { category: string; icon: string }> = {
-  ppe_violation: { category: "PPE", icon: "🪖" },
-  fall_risk: { category: "Construction", icon: "🏗️" },
-  machinery_hazard: { category: "Construction", icon: "🏗️" },
-  restricted_zone_entry: { category: "Security", icon: "🔒" },
-  fire_detected: { category: "Fire", icon: "🔥" },
-  smoke_detected: { category: "Fire", icon: "🔥" },
-  near_miss: { category: "Construction", icon: "🏗️" },
-  smoking: { category: "Fire", icon: "🔥" },
-};
 
 export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
   const [incidents, metrics, cameras, recentIncidents] = await Promise.all([
-    prisma.incident.findMany({ where: { NOT: { notes: "__test__" } } }),
+    prisma.incident.findMany({ where: { OR: [{ notes: null }, { notes: { not: "__test__" } }] } }),
     prisma.dailyMetric.findMany({ orderBy: { date: "desc" }, take: 14 }),
     prisma.camera.findMany({
       include: {
@@ -39,7 +33,7 @@ export default async function DashboardPage() {
       },
     }),
     prisma.incident.findMany({
-      where: { NOT: { notes: "__test__" } },
+      where: { OR: [{ notes: null }, { notes: { not: "__test__" } }] },
       take: 20,
       orderBy: { detectedAt: "desc" },
       include: { camera: { select: { name: true } } },
@@ -88,23 +82,26 @@ export default async function DashboardPage() {
       ? metrics.reduce((acc: number, m: MetricRow) => acc + m.avgResponseTime, 0) / metrics.length
       : 0;
 
-  const categoryMeta: Record<string, { icon: string }> = {};
-  for (const [, { category, icon }] of Object.entries(CATEGORY_MAP)) {
-    if (!categoryMeta[category]) categoryMeta[category] = { icon };
-  }
-  const riskCategories = Object.entries(categoryMeta).map(([category, { icon }]) => {
-    const typesInCategory = Object.entries(CATEGORY_MAP)
-      .filter(([, meta]) => meta.category === category)
+  const categoryMeta: Record<RiskCategoryKey, { icon: string }> = {
+    PPE: { icon: RISK_CATEGORY_ICONS.PPE },
+    Height: { icon: RISK_CATEGORY_ICONS.Height },
+    Machinery: { icon: RISK_CATEGORY_ICONS.Machinery },
+    Fire: { icon: RISK_CATEGORY_ICONS.Fire },
+    Security: { icon: RISK_CATEGORY_ICONS.Security },
+  };
+  const riskCategories = (Object.keys(categoryMeta) as RiskCategoryKey[]).map((categoryKey) => {
+    const typesInCategory = Object.entries(INCIDENT_CATEGORY_MAP)
+      .filter(([, cat]) => cat === categoryKey)
       .map(([type]) => type);
     const categoryIncidents = incidents.filter((i: IncidentRow) => typesInCategory.includes(i.type));
     const openCount = categoryIncidents.filter((i: IncidentRow) => i.status === "open").length;
     const latest = categoryIncidents.sort(
       (a: IncidentRow, b: IncidentRow) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime()
     )[0];
-    const categoryKey = category as "PPE" | "Construction" | "Fire" | "Security";
     return {
+      categoryKey,
       category: t(`categories.${categoryKey}`),
-      icon,
+      icon: categoryMeta[categoryKey].icon,
       openCount,
       latestRisk: latest?.riskLevel ?? null,
       latestSummary: latest?.reasoning ?? null,

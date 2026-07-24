@@ -192,7 +192,8 @@ async function propagateLastClassification(
   edgeReportId: string,
   cameraContext: { cameraId: string; projectId: string; zoneId: string },
   detectedAt: Date,
-  throttledForMs: number
+  throttledForMs: number,
+  imageBytes?: Buffer
 ) {
   const last = await prisma.edgeReport.findFirst({
     where: {
@@ -225,7 +226,8 @@ async function propagateLastClassification(
         },
         cameraContext,
         edgeReportId,
-        detectedAt
+        detectedAt,
+        imageBytes
       );
     }
 
@@ -265,7 +267,7 @@ async function processReportBackground(
     // ── Text-classifier rate gate ─────────────────────────────────────────────
     const timeSinceText = now - (lastTextLLMAt.get(cameraId) ?? 0);
     if (timeSinceText < LLM_RATE_LIMIT_MS) {
-      await propagateLastClassification(edgeReportId, cameraContext, detectedAt, timeSinceText);
+      await propagateLastClassification(edgeReportId, cameraContext, detectedAt, timeSinceText, imageBytes);
       return;
     }
     lastTextLLMAt.set(cameraId, now);
@@ -329,7 +331,7 @@ async function processReportBackground(
       },
     });
 
-    await evaluateAlarms(finalClassification, cameraContext, edgeReportId, detectedAt);
+    await evaluateAlarms(finalClassification, cameraContext, edgeReportId, detectedAt, imageBytes);
 
     // ── Translate to Chinese and persist in translationsJson ─────────────────
     // Runs after alarm evaluation so it never blocks incident creation.

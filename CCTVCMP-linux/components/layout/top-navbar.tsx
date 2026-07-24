@@ -7,14 +7,13 @@ export async function TopNavbar({ name, email, role }: { name: string; email: st
   const t = await getTranslations("nav");
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
-      <div>
-        <p className="text-sm text-muted-foreground">{t("platform")}</p>
-        <h1 className="text-lg font-semibold">{t("title")}</h1>
+    <header className="flex h-14 items-center justify-between border-b border-border bg-card px-6">
+      <div className="min-w-0">
+        <p className="truncate text-sm text-muted-foreground">{t("platform")}</p>
       </div>
       <div className="flex items-center gap-3">
         <LocaleToggle />
-        <div className="text-right">
+        <div className="hidden text-right sm:block">
           <p className="text-sm font-medium">{name}</p>
           <p className="text-xs text-muted-foreground">{email} · {role.replace("_", " ")}</p>
         </div>

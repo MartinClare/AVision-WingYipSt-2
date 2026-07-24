@@ -117,7 +117,16 @@ JWT_SECRET="replace-with-a-long-random-secret"
 EDGE_API_KEY="axonedge852852"
 
 # OpenRouter API key — used by CMP to classify incident types via Gemini
+# and (for daily safety reports) to rewrite narrative prose via REPORT_WRITER_MODEL
 OPENROUTER_API_KEY="sk-or-v1-..."
+
+# Optional daily-report narrative writer (defaults shown)
+# REPORT_WRITER_MODEL="meta-llama/llama-3.3-70b-instruct"
+# SKIP_LLM_NARRATIVE="false"
+
+# Optional CMP OpenRouter cost controls (seconds, minimum 60)
+# LLM_RATE_LIMIT_SECONDS=300
+# VISION_RATE_LIMIT_SECONDS=1800
 ```
 
 > **Neon tip:** Use the **pooled** connection string (hostname contains `-pooler`). Remove `&channel_binding=require` from the URL — Prisma does not support it.  

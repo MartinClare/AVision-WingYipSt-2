@@ -18,8 +18,8 @@
     "seed-cameras": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/seed-cameras.ts",
     "remove-stale-cameras": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/remove-stale-cameras.ts",
     "backfill:image-paths": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/backfill-edge-report-image-paths.ts",
-    "report:daily": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/generate-safety-report.ts --period daily",
-    "report:weekly": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/generate-safety-report.ts --period weekly",
+    "report:daily": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/generate-safety-report.ts --period daily --format both",
+    "report:weekly": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/generate-safety-report.ts --period weekly --format pdf",
     "db:push": "prisma db push",
     "postinstall": "prisma generate"
   },

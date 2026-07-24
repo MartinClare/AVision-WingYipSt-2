@@ -85,6 +85,8 @@ export const config = {
     "/analytics/:path*",
     "/reports/:path*",
     "/settings/:path*",
+    "/tower-crane/:path*",
+    "/modules/:path*",
     "/signin",
     "/signup",
     "/api/:path*",

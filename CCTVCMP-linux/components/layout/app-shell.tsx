@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUserFromCookies } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopNavbar } from "@/components/layout/top-navbar";
+import { AVisionTabs } from "@/components/layout/avision-tabs";
 import { CriticalAlertPopup } from "@/components/critical-alert-popup";
 
 export async function AppShell({ children }: { children: ReactNode }) {
@@ -12,8 +13,9 @@ export async function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <TopNavbar name={user.name} email={user.email} role={user.role} />
+        <AVisionTabs />
         <main className="flex-1 p-6">{children}</main>
       </div>
       {/* Polls every 10 s and shows a blocking modal for critical safety events */}

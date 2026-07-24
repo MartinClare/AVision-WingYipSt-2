@@ -5,6 +5,7 @@ import type { IncidentStatus, IncidentRiskLevel } from "@prisma/client";
 import type { Detection } from "@/components/edge-devices/bounding-box-canvas";
 import { getTranslations } from "next-intl/server";
 import { resolveEdgeReportImageUrl } from "@/lib/edge-report-images";
+import { isRiskCategoryKey, typesForCategory } from "@/lib/incident-categories";
 
 const VALID_STATUSES: IncidentStatus[] = ["open", "acknowledged", "resolved", "dismissed", "record_only"];
 const VALID_RISKS: IncidentRiskLevel[] = ["low", "medium", "high", "critical"];
@@ -37,6 +38,9 @@ export default async function IncidentsPage({
 
   const statusParam = typeof params.status === "string" ? params.status : undefined;
   const riskParam = typeof params.riskLevel === "string" ? params.riskLevel : undefined;
+  const categoryParam = typeof params.category === "string" ? params.category : undefined;
+  const categoryFilter = isRiskCategoryKey(categoryParam) ? categoryParam : null;
+  const categoryTypes = categoryFilter ? typesForCategory(categoryFilter) : null;
 
   const statusFilter = statusParam
     ?.split(",")
@@ -50,6 +54,7 @@ export default async function IncidentsPage({
     where: {
       ...(statusFilter?.length ? { status: { in: statusFilter } } : {}),
       ...(riskFilter?.length ? { riskLevel: { in: riskFilter } } : {}),
+      ...(categoryTypes?.length ? { type: { in: categoryTypes } } : {}),
     },
     include: {
       project: { select: { name: true } },
@@ -85,7 +90,9 @@ export default async function IncidentsPage({
     return { ...incident, evidence };
   });
 
+  const tDash = categoryFilter ? await getTranslations("dashboard") : null;
   const filterLabel = [
+    categoryFilter && tDash ? tDash(`categories.${categoryFilter}`) : null,
     statusFilter?.length ? statusFilter.join(", ") : null,
     riskFilter?.length ? riskFilter.join(", ") : null,
   ]

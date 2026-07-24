@@ -5,21 +5,29 @@ import { ONLINE_THRESHOLD_MS, shouldDisplayEdgeCamera } from "@/lib/camera-statu
 
 const CATEGORY_MAP: Record<string, { categoryKey: string; icon: string }> = {
   ppe_violation: { categoryKey: "PPE", icon: "🪖" },
-  fall_risk: { categoryKey: "Construction", icon: "🏗️" },
-  machinery_hazard: { categoryKey: "Construction", icon: "🏗️" },
+  fall_risk: { categoryKey: "Height", icon: "🪜" },
+  machinery_hazard: { categoryKey: "Machinery", icon: "⚙️" },
   restricted_zone_entry: { categoryKey: "Security", icon: "🔒" },
   fire_detected: { categoryKey: "Fire", icon: "🔥" },
   smoke_detected: { categoryKey: "Fire", icon: "🔥" },
-  near_miss: { categoryKey: "Construction", icon: "🏗️" },
+  near_miss: { categoryKey: "Height", icon: "🪜" },
   smoking: { categoryKey: "Fire", icon: "🔥" },
 };
+
+function isKnownFireFalsePositiveCamera(cameraName: string): boolean {
+  return /lan_cam_04/i.test(cameraName);
+}
+
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request);
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   const [incidents, metrics, cameras, recentIncidents] = await Promise.all([
-    prisma.incident.findMany({ where: { NOT: { notes: "__test__" } } }),
+    prisma.incident.findMany({
+      where: { OR: [{ notes: null }, { notes: { not: "__test__" } }] },
+      include: { camera: { select: { name: true } } },
+    }),
     prisma.dailyMetric.findMany({ orderBy: { date: "desc" }, take: 14 }),
     prisma.camera.findMany({
       include: {
@@ -37,8 +45,8 @@ export async function GET(request: NextRequest) {
       },
     }),
     prisma.incident.findMany({
-      where: { NOT: { notes: "__test__" } },
-      take: 20,
+      where: { OR: [{ notes: null }, { notes: { not: "__test__" } }] },
+      take: 80,
       orderBy: { detectedAt: "desc" },
       include: { camera: { select: { name: true } } },
     }),
@@ -80,9 +88,20 @@ export async function GET(request: NextRequest) {
     const typesInCategory = Object.entries(CATEGORY_MAP)
       .filter(([, meta]) => meta.categoryKey === categoryKey)
       .map(([type]) => type);
-    const categoryIncidents = incidents.filter((i) => typesInCategory.includes(i.type));
+    const categoryIncidents = incidents.filter((i) => {
+      if (!typesInCategory.includes(i.type)) return false;
+      // Keep known fire FP camera noise out of the Fire category card.
+      if (
+        categoryKey === "Fire" &&
+        (i.type === "fire_detected" || i.type === "smoke_detected") &&
+        isKnownFireFalsePositiveCamera(i.camera?.name ?? "")
+      ) {
+        return false;
+      }
+      return true;
+    });
     const openCount = categoryIncidents.filter((i) => i.status === "open" || i.status === "acknowledged").length;
-    const latest = categoryIncidents.sort(
+    const latest = [...categoryIncidents].sort(
       (a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime()
     )[0];
     return {
@@ -104,7 +123,16 @@ export async function GET(request: NextRequest) {
     },
     edgeDevices,
     riskCategories,
-    recentAlerts: recentIncidents.map((i) => ({
+    recentAlerts: recentIncidents
+      .filter(
+        (i) =>
+          !(
+            (i.type === "fire_detected" || i.type === "smoke_detected") &&
+            isKnownFireFalsePositiveCamera(i.camera.name)
+          )
+      )
+      .slice(0, 20)
+      .map((i) => ({
       id: i.id,
       type: i.type,
       riskLevel: i.riskLevel,

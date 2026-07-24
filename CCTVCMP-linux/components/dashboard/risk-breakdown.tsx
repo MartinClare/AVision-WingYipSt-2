@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getTranslations } from "next-intl/server";
 
 type CategoryRisk = {
+  categoryKey: string;
   category: string;
   icon: string;
   openCount: number;
@@ -21,7 +23,11 @@ export async function RiskBreakdown({ categories }: { categories: CategoryRisk[]
       <CardContent>
         <div className="grid gap-3 sm:grid-cols-2">
           {categories.map((cat) => (
-            <div key={cat.category} className="rounded-lg border p-3">
+            <Link
+              key={cat.categoryKey}
+              href={`/incidents?category=${encodeURIComponent(cat.categoryKey)}`}
+              className="rounded-lg border p-3 transition-colors hover:bg-muted/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span>{cat.icon}</span>
@@ -52,7 +58,7 @@ export async function RiskBreakdown({ categories }: { categories: CategoryRisk[]
               <p className="text-xs text-muted-foreground line-clamp-2">
                 {cat.latestSummary ?? t("noRecentReports")}
               </p>
-            </div>
+            </Link>
           ))}
         </div>
       </CardContent>

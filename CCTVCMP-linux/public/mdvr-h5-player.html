@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Video</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+      font: 12px/1.4 system-ui, sans-serif;
+    }
+    #cmsv6flash {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+    #status {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      text-align: center;
+      background: #0a0a0a;
+      z-index: 2;
+    }
+    #status[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div id="status">Loading player…</div>
+  <div id="cmsv6flash"></div>
+  <script>
+    (function () {
+      function qp(name) {
+        var search = location.search.replace(/^\?/, "");
+        if (!search) return "";
+        var parts = search.split("&");
+        for (var i = 0; i < parts.length; i++) {
+          var kv = parts[i].split("=");
+          if (decodeURIComponent(kv[0]) === name) {
+            return decodeURIComponent((kv[1] || "").replace(/\+/g, " "));
+          }
+        }
+        return "";
+      }
+
+      function setStatus(msg) {
+        var el = document.getElementById("status");
+        if (!msg) {
+          el.hidden = true;
+          el.textContent = "";
+          return;
+        }
+        el.hidden = false;
+        el.textContent = msg;
+      }
+
+      function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+          var s = document.createElement("script");
+          s.src = src;
+          s.async = false;
+          s.onload = function () { resolve(); };
+          s.onerror = function () { reject(new Error("Failed to load " + src)); };
+          document.head.appendChild(s);
+        });
+      }
+
+      var base = (qp("base") || "").replace(/\/$/, "");
+      var jsession = qp("jsession");
+      var devIdno = qp("devIdno");
+      var channel = parseInt(qp("channel") || "0", 10);
+      if (isNaN(channel) || channel < 0) channel = 0;
+      // Supplier monitor defaults to sub-stream (1)
+      var stream = parseInt(qp("stream") || "1", 10);
+      if (isNaN(stream)) stream = 1;
+      var title = qp("title") || (devIdno + " - CH" + (channel + 1));
+      var mediaHost = qp("mediaHost");
+      var mediaPort = parseInt(qp("mediaPort") || "6605", 10) || 6605;
+
+      if (!base || !jsession || !devIdno) {
+        setStatus("Missing base, jsession, or devIdno.");
+        return;
+      }
+
+      if (!mediaHost) {
+        try { mediaHost = new URL(base).hostname; }
+        catch (e) { setStatus("Invalid MDVR base URL."); return; }
+      }
+      if (!mediaHost || mediaHost === "localhost") mediaHost = "127.0.0.1";
+
+      // Same-origin proxy keeps player asset paths on this host.
+      // Critical: libcmsv6decode.wasm is loaded from site root (/libcmsv6decode.wasm),
+      // which is why the supplier page works (file exists on MDVR) but a bare
+      // CMP embed stayed black until we mirrored that file under /public.
+      var assetBase = "/mdvr-proxy";
+
+      var swfobject = null;
+      var started = false;
+
+      function size() {
+        return {
+          width: Math.max(160, window.innerWidth || document.documentElement.clientWidth || 320),
+          height: Math.max(120, window.innerHeight || document.documentElement.clientHeight || 180),
+        };
+      }
+
+      function playerApi() {
+        if (swfobject && typeof swfobject.startVideo === "function") return swfobject;
+        if (swfobject && typeof swfobject.getObjectById === "function") {
+          var obj = swfobject.getObjectById("cmsv6flash");
+          if (obj && typeof obj.startVideo === "function") return obj;
+        }
+        return null;
+      }
+
+      function waitReady(timeoutMs) {
+        var deadline = Date.now() + (timeoutMs || 20000);
+        return new Promise(function (resolve, reject) {
+          (function tick() {
+            var api = playerApi();
+            if (api && typeof api.setWindowNum === "function" && typeof api.startVideo === "function") {
+              resolve(api);
+              return;
+            }
+            if (Date.now() > deadline) {
+              reject(new Error("Player init timeout"));
+              return;
+            }
+            setTimeout(tick, 50);
+          })();
+        });
+      }
+
+      function start(api) {
+        try {
+          // Match supplier ttxvideo-h5 init: allocate windows then shrink to 1.
+          if (typeof api.setWindowNum === "function") {
+            try { api.setWindowNum(36); } catch (e1) { /* optional */ }
+            api.setWindowNum(1);
+          }
+          if (typeof api.setServerInfo === "function") {
+            api.setServerInfo(mediaHost, mediaPort);
+          }
+          if (typeof api.setVideoInfo === "function") api.setVideoInfo(0, title);
+          if (typeof api.setBufferTime === "function") {
+            try { api.setBufferTime(0, 2, 4); } catch (e2) { /* optional */ }
+          }
+          // Same signature as supplier ttxplayer-h5.js
+          api.startVideo(0, jsession, devIdno, channel, stream, true);
+          started = true;
+          setStatus("");
+        } catch (err) {
+          setStatus(err && err.message ? err.message : String(err));
+        }
+      }
+
+      // Prefer proxied same-origin scripts; fall back to absolute MDVR URLs.
+      loadScript(assetBase + "/808gps/js/jquery.min.js")
+        .catch(function () { return loadScript(base + "/808gps/js/jquery.min.js"); })
+        .then(function () {
+          return loadScript(assetBase + "/808gps/js/cmsv6player.min.js")
+            .catch(function () { return loadScript(base + "/808gps/js/cmsv6player.min.js"); });
+        })
+        .then(function () {
+          if (typeof Cmsv6Player === "undefined") {
+            throw new Error("Cmsv6Player not available");
+          }
+          var dim = size();
+          swfobject = new Cmsv6Player({
+            domId: "cmsv6flash",
+            width: dim.width,
+            height: dim.height,
+            lang: "zh-cn",
+          });
+          return waitReady(20000);
+        })
+        .then(start)
+        .catch(function (err) {
+          setStatus(err && err.message ? err.message : String(err));
+        });
+
+      window.addEventListener("resize", function () {
+        if (!started) return;
+        var api = playerApi();
+        if (!api) return;
+        var dim = size();
+        if (typeof api.resize === "function") {
+          try { api.resize(dim.width, dim.height); } catch (e) { /* optional */ }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
