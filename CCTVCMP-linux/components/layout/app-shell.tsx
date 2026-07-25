@@ -15,7 +15,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNavbar name={user.name} email={user.email} role={user.role} />
-        <AVisionTabs />
+        <AVisionTabs role={user.role} />
         <main className="flex-1 p-6">{children}</main>
       </div>
       {/* Polls every 10 s and shows a blocking modal for critical safety events */}

@@ -26,7 +26,7 @@ type CameraSpec = {
 
 // ── Camera list ───────────────────────────────────────────────────────────────
 // Override with CAMERAS env var (JSON), or edit this array directly.
-// AVision#2 — Wing Yip St (32 cameras, IDs prefixed av2_ to avoid collision with AVision#1)
+// AVision#2 — Wing Yip St (33 cameras, IDs prefixed av2_ to avoid collision with AVision#1)
 const DEFAULT_CAMERAS: CameraSpec[] = [
   // Floor 1
   { id: "av2_camera1",  name: "F1_1",   streamUrl: "rtsp://admin:123456@192.168.10.53:554/Streaming/Channels/101" },
@@ -56,6 +56,8 @@ const DEFAULT_CAMERAS: CameraSpec[] = [
   { id: "av2_camera20", name: "F7_1",   streamUrl: "rtsp://admin:123456@192.168.10.41:554/Streaming/Channels/101" },
   { id: "av2_camera21", name: "F7_2",   streamUrl: "rtsp://admin:123456@192.168.10.42:554/Streaming/Channels/101" },
   { id: "av2_camera22", name: "F7_3",   streamUrl: "rtsp://admin:123456@192.168.10.43:554/Streaming/Channels/101" },
+  // Floor 8
+  { id: "av2_camera33", name: "F8_EA1", streamUrl: "rtsp://admin:123456@192.168.10.59:554/Streaming/Channels/1" },
   // Floor 9
   { id: "av2_camera23", name: "F9_1",   streamUrl: "rtsp://admin:123456@192.168.10.37:554/Streaming/Channels/101" },
   { id: "av2_camera24", name: "F9_2",   streamUrl: "rtsp://admin:123456@192.168.10.38:554/Streaming/Channels/101" },

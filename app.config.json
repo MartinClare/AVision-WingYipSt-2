@@ -254,6 +254,15 @@
         "useTailscale": false
       },
       {
+        "id": "av2_camera33",
+        "name": "F8 / EA1",
+        "url": "rtsp://admin:123456@192.168.10.59:554/Streaming/Channels/1",
+        "browserUrl": "http://192.168.10.59",
+        "enabled": true,
+        "tailscaleUrl": "",
+        "useTailscale": false
+      },
+      {
         "id": "av2_camera23",
         "name": "F9 / 1",
         "url": "rtsp://admin:123456@192.168.10.37:554/Streaming/Channels/101",

@@ -3,7 +3,7 @@ import { hasRoleAccess, getRequiredRoles } from "@/lib/rbac";
 
 describe("rbac", () => {
   it("gets required role from route map", () => {
-    expect(getRequiredRoles("/settings")).toEqual(["admin", "project_manager"]);
+    expect(getRequiredRoles("/settings")).toEqual(["admin"]);
     expect(getRequiredRoles("/unknown")).toBeNull();
   });
 
