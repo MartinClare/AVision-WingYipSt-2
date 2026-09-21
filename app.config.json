@@ -51,6 +51,13 @@
       "heartbeatIntervalSec": 60,
       "onlyReportElevated": true,
       "minAnalysisReportIntervalSec": 60
+    },
+    "frameChangeGate": {
+      "enabled": true,
+      "minChangePercent": 0.08,
+      "pixelNoiseFloor": 15,
+      "width": 160,
+      "height": 90
     }
   },
   "rtsp": {

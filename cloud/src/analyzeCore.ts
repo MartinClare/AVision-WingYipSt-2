@@ -40,6 +40,9 @@ type AnalyzeRequestOptions = {
   visionModel?: VisionActiveModel;
   yoloDetections?: YoloContextDetection[];
   yoloGate?: YoloGateContext;
+  /** For OpenRouter journal lines (per-camera picture). */
+  cameraId?: string;
+  cameraName?: string;
 };
 
 const TWO_STAGE = process.env.LOCAL_VISION_TWO_STAGE === '1';
@@ -83,6 +86,7 @@ export async function runVision(
   prompt: string,
   sizeKB: number,
   vision: ReturnType<typeof getVisionConfig>,
+  logContext?: { cameraId?: string; cameraName?: string },
 ): Promise<string> {
   if (vision.activeModel === 'openrouter') {
     const m = imageDataUrl.match(/^data:([^;]+);base64,([\s\S]+)$/);
@@ -98,6 +102,11 @@ export async function runVision(
         fallbackModel: vision.openrouterModelFallback,
         maxTokens: vision.maxNewTokens,
         apiKey: process.env.OPENROUTER_API_KEY || '',
+        logContext: {
+          cameraId: logContext?.cameraId,
+          cameraName: logContext?.cameraName,
+          role,
+        },
       },
     );
   }
@@ -198,12 +207,23 @@ async function analyzeImageBufferUnlimited(
   requestOptions?: AnalyzeRequestOptions,
 ): Promise<SafetyAnalysisResult> {
   const vision = buildVisionForRequest(requestOptions?.visionModel);
+  const logContext = {
+    cameraId: requestOptions?.cameraId,
+    cameraName: requestOptions?.cameraName,
+  };
   const imageDataUrl = `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
   const sizeKB = jpegBuffer.length / 1024;
   const inspectorPrompt =
     getSafetyAnalysisPrompt(language) +
     buildYoloContextBlock(requestOptions?.yoloDetections, requestOptions?.yoloGate);
-  const inspectorText = await runVision('inspector', imageDataUrl, inspectorPrompt, sizeKB, vision);
+  const inspectorText = await runVision(
+    'inspector',
+    imageDataUrl,
+    inspectorPrompt,
+    sizeKB,
+    vision,
+    logContext,
+  );
   const inspectorResult = parseGeminiResponse(inspectorText);
   const inspectorName = inspectorModelLabel(vision.activeModel);
 
@@ -224,7 +244,14 @@ async function analyzeImageBufferUnlimited(
   const evalPrompt = getEvaluatorPrompt(language, inspectorJson);
   let evalOut: EvaluatorOutput;
   try {
-    const evalText = await runVision('evaluator', imageDataUrl, evalPrompt, sizeKB, vision);
+    const evalText = await runVision(
+      'evaluator',
+      imageDataUrl,
+      evalPrompt,
+      sizeKB,
+      vision,
+      logContext,
+    );
     evalOut = parseEvaluatorResponse(evalText);
   } catch (e) {
     if (EVALUATOR_ON_FAILURE_NO_REPORT) {

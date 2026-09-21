@@ -81,6 +81,14 @@ const DEFAULTS = {
       'machinery',
     ],
   },
+  /** Standalone decoded-pixel gate used when YOLO is off (no periodic force-send). */
+  frameChangeGate: {
+    enabled: true,
+    minChangePercent: 0.08,
+    pixelNoiseFloor: 15,
+    width: 160,
+    height: 90,
+  },
   maxNewTokens: 1536,
   cmpReporting: {
     /** Seconds between keepalive+snapshot heartbeats to CMP. */
@@ -109,6 +117,13 @@ export type VisionConfig = {
     sceneChangeThreshold: number;
     fallbackOnYoloError: 'periodic' | 'analyze' | 'skip';
     classesOfInterest: string[];
+  };
+  frameChangeGate: {
+    enabled: boolean;
+    minChangePercent: number;
+    pixelNoiseFloor: number;
+    width: number;
+    height: number;
   };
   maxNewTokens: number;
   cmpReporting: {
@@ -143,6 +158,7 @@ export function getVisionConfig(): VisionConfig {
   }
   const cr = v.cmpReporting as Record<string, unknown> | undefined;
   const yg = v.yoloGate as Record<string, unknown> | undefined;
+  const fcg = v.frameChangeGate as Record<string, unknown> | undefined;
   const am = v.activeModel;
   const fallbackOnYoloError =
     yg?.fallbackOnYoloError === 'analyze' || yg?.fallbackOnYoloError === 'skip'
@@ -224,6 +240,43 @@ export function getVisionConfig(): VisionConfig {
             .filter((c): c is string => typeof c === 'string' && !!c.trim())
             .map((c) => c.trim())
         : [...DEFAULTS.yoloGate.classesOfInterest],
+    },
+    frameChangeGate: {
+      enabled: fcg?.enabled !== false,
+      minChangePercent: Math.max(
+        0,
+        Math.min(
+          1,
+          Number(fcg?.minChangePercent ?? DEFAULTS.frameChangeGate.minChangePercent) ||
+            DEFAULTS.frameChangeGate.minChangePercent,
+        ),
+      ),
+      pixelNoiseFloor: Math.max(
+        0,
+        Math.min(
+          255,
+          Math.floor(
+            Number(fcg?.pixelNoiseFloor ?? DEFAULTS.frameChangeGate.pixelNoiseFloor) ||
+              DEFAULTS.frameChangeGate.pixelNoiseFloor,
+          ),
+        ),
+      ),
+      width: Math.max(
+        8,
+        Math.min(
+          640,
+          Math.floor(Number(fcg?.width ?? DEFAULTS.frameChangeGate.width) || DEFAULTS.frameChangeGate.width),
+        ),
+      ),
+      height: Math.max(
+        8,
+        Math.min(
+          480,
+          Math.floor(
+            Number(fcg?.height ?? DEFAULTS.frameChangeGate.height) || DEFAULTS.frameChangeGate.height,
+          ),
+        ),
+      ),
     },
     maxNewTokens: Math.max(
       64,

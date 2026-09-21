@@ -27,9 +27,18 @@ import {
 import { loadConfig } from './configRoute.js';
 import { getVisionConfig } from './visionModels.js';
 import { detectImageWithYolo, type YoloDetection } from './yoloClient.js';
+import { decodedFrameChangePercent } from './frameChange.js';
 import type { SafetyAnalysisResult } from './types.js';
 
-type GateDecision = 'analyzed' | 'skipped_no_interest' | 'periodic' | 'scene_change' | 'yolo_error_fallback' | 'disabled';
+type GateDecision =
+  | 'analyzed'
+  | 'skipped_no_interest'
+  | 'periodic'
+  | 'scene_change'
+  | 'yolo_error_fallback'
+  | 'disabled'
+  | 'frame_change'
+  | 'skipped_frame_change';
 
 interface YoloGateMeta {
   decision: GateDecision;
@@ -58,12 +67,22 @@ function tryStartPendingAnalyses(cfg: Record<string, unknown>): void {
     activeAnalysisCount++;
     void (async () => {
       try {
+        console.log(
+          `[backgroundLoop] VLM start camera=${cam.id} name=${JSON.stringify(cam.name)} reason=${pending.yoloGate?.reason || '-'}`,
+        );
         const result = await analyzeImageBuffer(pending.frame, 'en', {
           yoloDetections: pending.yoloDetections,
           yoloGate: pending.yoloGate,
+          cameraId: cam.id,
+          cameraName: cam.name,
         });
         latestResults.set(cam.id, buildCachedResult(cam.id, cam.name, result));
         lastVlmAnalysisAt.set(cam.id, Date.now());
+        // Reference for pixel-diff gate: only frames that were actually sent to the VLM.
+        lastSentFrame.set(cam.id, pending.frame);
+        console.log(
+          `[backgroundLoop] VLM done camera=${cam.id} risk=${result.overallRiskLevel} people=${result.peopleCount ?? 0}`,
+        );
 
         const central = getCentralConfig(cfg);
         const now = Date.now();
@@ -156,6 +175,8 @@ const pendingFrames = new Map<string, PendingAnalysis>();
 const analysisInFlight = new Set<string>();
 const lastVlmAnalysisAt = new Map<string, number>();
 const lastGateFrame = new Map<string, Buffer>();
+/** Last JPEG actually sent to the VLM (per camera) — baseline for frameChangeGate. */
+const lastSentFrame = new Map<string, Buffer>();
 const gateStatuses = new Map<string, GateStatus>();
 const gateSkippedCounts = new Map<string, number>();
 let analysisTimer: ReturnType<typeof setTimeout> | null = null;
@@ -286,6 +307,43 @@ async function shouldAnalyzeFrame(
   const sceneChanged = cfg.sceneChangeEnabled && sceneChangeScore >= cfg.sceneChangeThreshold;
 
   if (!cfg.enabled) {
+    const fcg = getVisionConfig().frameChangeGate;
+    if (fcg.enabled) {
+      const prev = lastSentFrame.get(camera.id);
+      if (!prev) {
+        return {
+          analyze: true,
+          meta: {
+            decision: 'frame_change',
+            reason: 'frameChangeGate: first frame (no baseline)',
+            sceneChangeScore: 1,
+          },
+        };
+      }
+      const changePercent = decodedFrameChangePercent(prev, frameJpeg, {
+        width: fcg.width,
+        height: fcg.height,
+        pixelNoiseFloor: fcg.pixelNoiseFloor,
+      });
+      if (changePercent < fcg.minChangePercent) {
+        return {
+          analyze: false,
+          meta: {
+            decision: 'skipped_frame_change',
+            reason: `frameChange skipped change=${changePercent.toFixed(4)} threshold=${fcg.minChangePercent}`,
+            sceneChangeScore: changePercent,
+          },
+        };
+      }
+      return {
+        analyze: true,
+        meta: {
+          decision: 'frame_change',
+          reason: `frameChangeGate: change=${changePercent.toFixed(4)} >= ${fcg.minChangePercent}`,
+          sceneChangeScore: changePercent,
+        },
+      };
+    }
     return {
       analyze: true,
       meta: {
@@ -485,8 +543,10 @@ async function analysisIteration(): Promise<void> {
     } else {
       gateSkippedCounts.set(camera.id, (gateSkippedCounts.get(camera.id) ?? 0) + 1);
       updateGateStatus(camera, gate.meta);
+      const skipKind =
+        gate.meta.decision === 'skipped_frame_change' ? 'frameChange' : 'YOLO gate';
       console.log(
-        `[backgroundLoop] YOLO gate skipped camera=${camera.id} reason=${gate.meta.reason}`,
+        `[backgroundLoop] ${skipKind} skipped camera=${camera.id} reason=${gate.meta.reason}`,
       );
     }
 
