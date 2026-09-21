@@ -18,32 +18,39 @@ function isKnownFireFalsePositiveCamera(cameraName: string): boolean {
   return /lan_cam_04/i.test(cameraName);
 }
 
+type LatestReportRow = {
+  camera_id: string;
+  message_type: string;
+  keepalive: boolean;
+  overall_risk_level: string | null;
+  overall_description: string | null;
+  received_at: Date | null;
+};
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request);
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-  const [incidents, metrics, cameras, recentIncidents] = await Promise.all([
+  const [incidents, metrics, camerasRaw, latestReports, recentIncidents] = await Promise.all([
     prisma.incident.findMany({
       where: { OR: [{ notes: null }, { notes: { not: "__test__" } }] },
       include: { camera: { select: { name: true } } },
     }),
     prisma.dailyMetric.findMany({ orderBy: { date: "desc" }, take: 14 }),
-    prisma.camera.findMany({
-      include: {
-        edgeReports: {
-          orderBy: { receivedAt: "desc" },
-          take: 1,
-          select: {
-            messageType: true,
-            keepalive: true,
-            overallRiskLevel: true,
-            overallDescription: true,
-            receivedAt: true,
-          },
-        },
-      },
-    }),
+    prisma.camera.findMany(),
+    // Latest report per camera via LATERAL: one index lookup per camera
+    // instead of a whole-table DISTINCT ON scan (~930ms -> ~2ms).
+    prisma.$queryRaw<LatestReportRow[]>`
+      SELECT l.camera_id, l.message_type, l.keepalive, l.overall_risk_level, l.overall_description, l.received_at
+      FROM cameras c
+      CROSS JOIN LATERAL (
+        SELECT e.camera_id, e.message_type, e.keepalive, e.overall_risk_level, e.overall_description, e.received_at
+        FROM edge_reports e
+        WHERE e.camera_id = c.id
+        ORDER BY e.received_at DESC
+        LIMIT 1
+      ) l
+    `,
     prisma.incident.findMany({
       where: { OR: [{ notes: null }, { notes: { not: "__test__" } }] },
       take: 80,
@@ -51,6 +58,25 @@ export async function GET(request: NextRequest) {
       include: { camera: { select: { name: true } } },
     }),
   ]);
+
+  const latestByCamera = new Map(latestReports.map((r) => [r.camera_id, r]));
+  const cameras = camerasRaw.map((cam) => {
+    const r = latestByCamera.get(cam.id);
+    return {
+      ...cam,
+      edgeReports: r
+        ? [
+            {
+              messageType: r.message_type,
+              keepalive: r.keepalive,
+              overallRiskLevel: r.overall_risk_level,
+              overallDescription: r.overall_description,
+              receivedAt: r.received_at,
+            },
+          ]
+        : [],
+    };
+  });
 
   const now = Date.now();
   const edgeDevices = cameras

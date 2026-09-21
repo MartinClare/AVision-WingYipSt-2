@@ -19,6 +19,16 @@
       height: 100%;
       background: #000;
     }
+    /* Cmsv6 uses object-fit:fill (stretches). contain = fit by longer side, no crop. */
+    video, canvas,
+    #cmsv6flash video, #cmsv6flash canvas,
+    :fullscreen video, :fullscreen canvas,
+    :-webkit-full-screen video, :-webkit-full-screen canvas {
+      object-fit: contain !important;
+    }
+    :fullscreen, :-webkit-full-screen {
+      background: #000 !important;
+    }
     #status {
       position: absolute;
       inset: 0;
@@ -139,6 +149,7 @@
       var swfobject = null;
       var started = false;
 
+      // Full viewport for Cmsv6 (incl. rotated fullscreen). Aspect kept via object-fit:contain.
       function size() {
         return {
           width: Math.max(160, window.innerWidth || document.documentElement.clientWidth || 320),
@@ -251,9 +262,16 @@
           }
 
           // Same signature as supplier ttxplayer-h5.js
+          setStatus("Connecting stream…");
           api.startVideo(0, jsession, devIdno, channel, stream, true);
           started = true;
-          setStatus("");
+          // Do not clear immediately — a silent black pane looks "loaded".
+          setTimeout(function () {
+            var el = document.getElementById("status");
+            if (el && !el.hidden && /Connecting/.test(el.textContent || "")) {
+              setStatus("Waiting for video…");
+            }
+          }, 8000);
         } catch (err) {
           setStatus(err && err.message ? err.message : String(err));
         }
@@ -286,6 +304,13 @@
           setStatus(err && err.message ? err.message : String(err));
         });
 
+      function forceContainPaint() {
+        var nodes = document.querySelectorAll("video, canvas");
+        for (var i = 0; i < nodes.length; i++) {
+          try { nodes[i].style.setProperty("object-fit", "contain", "important"); } catch (e1) { /* optional */ }
+        }
+      }
+
       window.addEventListener("resize", function () {
         if (!started) return;
         var api = playerApi();
@@ -294,7 +319,15 @@
         if (typeof api.resize === "function") {
           try { api.resize(dim.width, dim.height); } catch (e) { /* optional */ }
         }
+        forceContainPaint();
       });
+      // Keep Cmsv6 fullscreen rotation/fill; only re-apply contain (no crop/stretch).
+      function onFs() {
+        setTimeout(forceContainPaint, 50);
+        setTimeout(forceContainPaint, 250);
+      }
+      document.addEventListener("fullscreenchange", onFs);
+      document.addEventListener("webkitfullscreenchange", onFs);
     })();
   </script>
 </body>

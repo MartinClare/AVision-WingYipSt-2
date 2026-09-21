@@ -13,10 +13,23 @@ export type RestrictedZoneCamera = {
 
 export const RESTRICTED_ZONE_CAMERAS: RestrictedZoneCamera[] = [
   {
+    id: "f6-ea",
+    name: "F6 / EA",
+    go2rtcSrc: "av2_camera35",
+    ip: "192.168.10.62",
+  },
+  {
     id: "f8-ea1",
     name: "F8 / EA1",
-    go2rtcSrc: "rz_f8_ea1",
+    // Must match camera id in app.config.json / go2rtc (edge-cloud regenerates yaml)
+    go2rtcSrc: "av2_camera33",
     ip: "192.168.10.59",
+  },
+  {
+    id: "f10-ea-chutaitai",
+    name: "F10 / EA 出料台",
+    go2rtcSrc: "av2_camera34",
+    ip: "192.168.10.58",
   },
 ];
 

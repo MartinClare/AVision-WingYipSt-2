@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CalendarClock,
   Camera,
@@ -31,8 +31,21 @@ type GenerateSummary = {
   narrativeModel?: string | null;
 };
 
+type ReportPagePayload = {
+  reports: ReportFileItem[];
+  total: number;
+  dailyCount: number;
+  formats: Array<"pdf" | "docx">;
+  nextOffset: number | null;
+};
+
 type Props = {
   initialReports: ReportFileItem[];
+  initialNextOffset: number | null;
+  initialDailyCount: number;
+  initialFormats: Array<"pdf" | "docx">;
+  initialTotal: number;
+  pageSize?: number;
 };
 
 function formatBytes(bytes: number): string {
@@ -76,22 +89,88 @@ function nextRunLabel(): string {
   });
 }
 
-export function ReportsDashboard({ initialReports }: Props) {
+export function ReportsDashboard({
+  initialReports,
+  initialNextOffset,
+  initialDailyCount,
+  initialFormats,
+  initialTotal,
+  pageSize = 20,
+}: Props) {
   const [reports, setReports] = useState(initialReports);
+  const [nextOffset, setNextOffset] = useState<number | null>(initialNextOffset);
+  const [dailyCount, setDailyCount] = useState(initialDailyCount);
+  const [formats, setFormats] = useState(initialFormats);
+  const [total, setTotal] = useState(initialTotal);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [generating, setGenerating] = useState<"pdf" | "docx" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [lastSummary, setLastSummary] = useState<GenerateSummary | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingRef = useRef(false);
 
   const latest = reports[0] ?? null;
-  const dailyCount = reports.filter((report) => report.period === "daily").length;
-  const formats = useMemo(() => new Set(reports.map((report) => report.format)), [reports]);
+
+  useEffect(() => {
+    setReports(initialReports);
+    setNextOffset(initialNextOffset);
+    setDailyCount(initialDailyCount);
+    setFormats(initialFormats);
+    setTotal(initialTotal);
+  }, [initialReports, initialNextOffset, initialDailyCount, initialFormats, initialTotal]);
+
+  function applyPage(page: ReportPagePayload, mode: "replace" | "append") {
+    setDailyCount(page.dailyCount);
+    setFormats(page.formats);
+    setTotal(page.total);
+    setNextOffset(page.nextOffset);
+    if (mode === "replace") {
+      setReports(page.reports);
+      return;
+    }
+    setReports((prev) => {
+      const seen = new Set(prev.map((r) => r.filename));
+      return [...prev, ...page.reports.filter((r) => !seen.has(r.filename))];
+    });
+  }
 
   async function refreshReports() {
-    const response = await fetch("/api/reports", { cache: "no-store" });
+    const response = await fetch(`/api/reports?offset=0&limit=${pageSize}`, { cache: "no-store" });
     if (!response.ok) return;
-    const payload = (await response.json()) as { data: ReportFileItem[] };
-    setReports(payload.data);
+    const payload = (await response.json()) as { data: ReportPagePayload };
+    applyPage(payload.data, "replace");
   }
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset == null || loadingRef.current) return;
+    loadingRef.current = true;
+    setLoadingMore(true);
+    try {
+      const response = await fetch(
+        `/api/reports?offset=${nextOffset}&limit=${pageSize}`,
+        { cache: "no-store" }
+      );
+      if (!response.ok) return;
+      const payload = (await response.json()) as { data: ReportPagePayload };
+      applyPage(payload.data, "append");
+    } finally {
+      loadingRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [nextOffset, pageSize]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || nextOffset == null) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMore();
+      },
+      { rootMargin: "240px 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [loadMore, nextOffset]);
 
   async function generate(format: "pdf" | "docx") {
     setGenerating(format);
@@ -232,7 +311,8 @@ export function ReportsDashboard({ initialReports }: Props) {
               </div>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              {[...formats].map((value) => value.toUpperCase()).join(" + ") || "No reports yet"}
+              {formats.map((value) => value.toUpperCase()).join(" + ") || "No reports yet"}
+              {total > reports.length ? ` · ${reports.length}/${total} shown` : ""}
             </p>
           </CardContent>
         </Card>
@@ -310,7 +390,7 @@ export function ReportsDashboard({ initialReports }: Props) {
               </div>
             ) : (
               <div className="space-y-3">
-                {reports.slice(0, 20).map((report) => (
+                {reports.map((report) => (
                   <div
                     key={report.filename}
                     className="flex flex-col gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center"
@@ -348,6 +428,12 @@ export function ReportsDashboard({ initialReports }: Props) {
                     </a>
                   </div>
                 ))}
+                <div ref={sentinelRef} className="h-6 w-full" />
+                {loadingMore && (
+                  <p className="py-1 text-center text-xs text-muted-foreground">
+                    Loading more reports…
+                  </p>
+                )}
               </div>
             )}
           </CardContent>

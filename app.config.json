@@ -263,6 +263,15 @@
         "useTailscale": false
       },
       {
+        "id": "av2_camera34",
+        "name": "F10 / EA 出料台",
+        "url": "rtsp://admin:123456@192.168.10.58:554/Streaming/Channels/1",
+        "browserUrl": "http://192.168.10.58",
+        "enabled": true,
+        "tailscaleUrl": "",
+        "useTailscale": false
+      },
+      {
         "id": "av2_camera23",
         "name": "F9 / 1",
         "url": "rtsp://admin:123456@192.168.10.37:554/Streaming/Channels/101",
@@ -351,6 +360,24 @@
         "enabled": true,
         "tailscaleUrl": "",
         "useTailscale": false
+      },
+      {
+        "id": "av2_camera35",
+        "name": "F6 / EA",
+        "url": "rtsp://admin:123456@192.168.10.62:554/Streaming/Channels/1",
+        "browserUrl": "http://192.168.10.62",
+        "enabled": true,
+        "tailscaleUrl": "",
+        "useTailscale": false
+      },
+      {
+        "id": "av2_camera36",
+        "name": "ROOF / 5",
+        "url": "rtsp://admin:123456@192.168.10.63:554/Streaming/Channels/101",
+        "browserUrl": "http://192.168.10.63",
+        "enabled": true,
+        "tailscaleUrl": "",
+        "useTailscale": false
       }
     ],
     "fpsLimit": 15,
@@ -371,9 +398,7 @@
   "centralServer": {
     "enabled": true,
     "url": "http://localhost:3102/api/webhook/edge-report",
-    "cloudUrl": "https://cctvcmpchev.vercel.app/api/webhook/edge-report",
-    "apiKey": "axonedge852852",
-    "vercelBypassToken": "DgDk0ncqfYOMOcldWHi1McwSWSiaqTpX"
+    "apiKey": "axonedge852852"
   },
   "network": {
     "camera_lan": "eth1",

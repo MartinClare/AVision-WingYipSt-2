@@ -57,7 +57,7 @@
     "cameras": [
       {
         "id": "camera1",
-        "name": "lan_cam_01",
+        "name": "B / 3",
         "url": "rtsp://admin:123456@192.168.10.2:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.2",
         "enabled": true,
@@ -66,7 +66,7 @@
       },
       {
         "id": "camera2",
-        "name": "lan_cam_02",
+        "name": "B / 4",
         "url": "rtsp://admin:123456@192.168.10.3:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.3",
         "enabled": true,
@@ -75,7 +75,7 @@
       },
       {
         "id": "camera3",
-        "name": "lan_cam_03",
+        "name": "B / 1",
         "url": "rtsp://admin:123456@192.168.10.5:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.5",
         "enabled": true,
@@ -84,7 +84,7 @@
       },
       {
         "id": "camera4",
-        "name": "lan_cam_04",
+        "name": "B / 2",
         "url": "rtsp://admin:123456@192.168.10.6:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.6",
         "enabled": true,
@@ -93,7 +93,7 @@
       },
       {
         "id": "camera5",
-        "name": "lan_cam_05",
+        "name": "G / 2",
         "url": "rtsp://admin:123456@192.168.10.7:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.7",
         "enabled": true,
@@ -102,7 +102,7 @@
       },
       {
         "id": "camera6",
-        "name": "lan_cam_06",
+        "name": "G / 1",
         "url": "rtsp://admin:123456@192.168.10.8:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.8",
         "enabled": true,
@@ -111,7 +111,7 @@
       },
       {
         "id": "camera7",
-        "name": "lan_cam_07",
+        "name": "G / 3",
         "url": "rtsp://admin:123456@192.168.10.9:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.9",
         "enabled": true,
@@ -120,7 +120,7 @@
       },
       {
         "id": "camera8",
-        "name": "lan_cam_08",
+        "name": "F6 / 1",
         "url": "rtsp://admin:123456@192.168.10.10:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.10",
         "enabled": true,
@@ -129,7 +129,7 @@
       },
       {
         "id": "camera9",
-        "name": "lan_cam_09",
+        "name": "F6 / 2",
         "url": "rtsp://admin:123456@192.168.10.11:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.11",
         "enabled": true,
@@ -138,7 +138,7 @@
       },
       {
         "id": "camera10",
-        "name": "lan_cam_10",
+        "name": "F6 / 3",
         "url": "rtsp://admin:123456@192.168.10.12:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.12",
         "enabled": true,
@@ -147,7 +147,7 @@
       },
       {
         "id": "camera11",
-        "name": "lan_cam_11",
+        "name": "F8 / 1",
         "url": "rtsp://admin:123456@192.168.10.13:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.13",
         "enabled": true,
@@ -156,7 +156,7 @@
       },
       {
         "id": "camera12",
-        "name": "lan_cam_12",
+        "name": "F8 / 2",
         "url": "rtsp://admin:123456@192.168.10.14:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.14",
         "enabled": true,
@@ -165,7 +165,7 @@
       },
       {
         "id": "camera13",
-        "name": "lan_cam_13",
+        "name": "F8 / 3",
         "url": "rtsp://admin:123456@192.168.10.15:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.15",
         "enabled": true,
@@ -174,7 +174,7 @@
       },
       {
         "id": "camera14",
-        "name": "lan_cam_14",
+        "name": "F10 / 1",
         "url": "rtsp://admin:123456@192.168.10.16:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.16",
         "enabled": true,
@@ -183,7 +183,7 @@
       },
       {
         "id": "camera15",
-        "name": "lan_cam_15",
+        "name": "F10 / 2",
         "url": "rtsp://admin:123456@192.168.10.17:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.17",
         "enabled": true,
@@ -192,7 +192,7 @@
       },
       {
         "id": "camera16",
-        "name": "lan_cam_16",
+        "name": "F12 / 1",
         "url": "rtsp://admin:123456@192.168.10.19:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.19",
         "enabled": true,
@@ -201,7 +201,7 @@
       },
       {
         "id": "camera17",
-        "name": "lan_cam_17",
+        "name": "F12 / 2",
         "url": "rtsp://admin:123456@192.168.10.20:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.20",
         "enabled": true,
@@ -210,7 +210,7 @@
       },
       {
         "id": "camera18",
-        "name": "lan_cam_18",
+        "name": "ROOF / 2",
         "url": "rtsp://admin:123456@192.168.10.21:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.21",
         "enabled": true,
@@ -219,7 +219,7 @@
       },
       {
         "id": "camera19",
-        "name": "lan_cam_19",
+        "name": "ROOF / 1",
         "url": "rtsp://admin:123456@192.168.10.22:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.22",
         "enabled": true,
@@ -228,7 +228,7 @@
       },
       {
         "id": "camera20",
-        "name": "lan_cam_20",
+        "name": "ROOF / 3",
         "url": "rtsp://admin:123456@192.168.10.23:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.23",
         "enabled": true,
@@ -237,7 +237,7 @@
       },
       {
         "id": "camera21",
-        "name": "lan_cam_21",
+        "name": "F12 / 3",
         "url": "rtsp://admin:123456@192.168.10.24:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.24",
         "enabled": true,
@@ -246,7 +246,7 @@
       },
       {
         "id": "camera22",
-        "name": "lan_cam_22",
+        "name": "F10 / 3",
         "url": "rtsp://admin:123456@192.168.10.30:554/Streaming/Channels/101",
         "browserUrl": "http://192.168.10.30",
         "enabled": true,
@@ -272,9 +272,7 @@
   "centralServer": {
     "enabled": true,
     "url": "http://localhost:3102/api/webhook/edge-report",
-    "cloudUrl": "https://cctvcmpchev.vercel.app/api/webhook/edge-report",
-    "apiKey": "axonedge852852",
-    "vercelBypassToken": "DgDk0ncqfYOMOcldWHi1McwSWSiaqTpX"
+    "apiKey": "axonedge852852"
   },
   "network": {
     "camera_lan": "eth1",

@@ -1,27 +1,9 @@
-import { prisma } from "@/lib/prisma";
-import { buildAnalyticsSnapshot } from "@/lib/analytics";
+import { fetchAnalyticsSnapshot } from "@/lib/analytics";
 import { AnalyticsCharts } from "@/components/analytics/charts";
 import { AutoRefresh } from "@/components/auto-refresh";
 
 export default async function AnalyticsPage() {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-  const reports = await prisma.edgeReport.findMany({
-    where: { receivedAt: { gte: thirtyDaysAgo } },
-    select: {
-      receivedAt: true,
-      overallRiskLevel: true,
-      cmpRiskLevel: true,
-      peopleCount: true,
-      missingHardhats: true,
-      missingVests: true,
-      keepalive: true,
-      messageType: true,
-    },
-    orderBy: { receivedAt: "asc" },
-  });
-
-  const snapshot = buildAnalyticsSnapshot(reports as Parameters<typeof buildAnalyticsSnapshot>[0]);
+  const snapshot = await fetchAnalyticsSnapshot();
 
   return (
     <div className="space-y-6">

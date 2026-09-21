@@ -29,9 +29,34 @@ export async function GET(
     select: { id: true, eventImageMimeType: true, eventImageData: true },
   });
 
-  if (!report) return new NextResponse(null, { status: 204 });
+  let imageId: string | null = null;
+  let mimeType = "image/jpeg";
+  let dbBlob: Uint8Array | null = null;
 
-  const mimeType = report.eventImageMimeType ?? "image/jpeg";
+  if (report) {
+    imageId = report.id;
+    mimeType = report.eventImageMimeType ?? mimeType;
+    dbBlob = report.eventImageData ? new Uint8Array(report.eventImageData) : null;
+  } else {
+    // Fall back to archived reports: retention moves old rows to
+    // edge_reports_archive, but image files persist on disk.
+    const archived = await prisma.$queryRaw<
+      Array<{ id: string; event_image_mime_type: string | null }>
+    >`
+      SELECT id, event_image_mime_type
+      FROM edge_reports_archive
+      WHERE camera_id = ${camera.id} AND event_image_included
+      ORDER BY received_at DESC
+      LIMIT 1
+    `;
+    if (archived[0]) {
+      imageId = archived[0].id;
+      mimeType = archived[0].event_image_mime_type ?? mimeType;
+    }
+  }
+
+  if (!imageId) return new NextResponse(null, { status: 204 });
+
   const headers = {
     "Content-Type": mimeType,
     "Cache-Control": "no-store, max-age=0",
@@ -39,14 +64,14 @@ export async function GET(
 
   // 1. Try disk first (new storage)
   const ext = mimeType === "image/png" ? "png" : "jpg";
-  const filePath = join(IMAGE_DIR, `${report.id}.${ext}`);
+  const filePath = join(IMAGE_DIR, `${imageId}.${ext}`);
   try {
     const bytes = await readFile(filePath);
     return new NextResponse(bytes, { status: 200, headers });
   } catch {
     // 2. Fall back to DB blob for old records
-    if (report.eventImageData) {
-      return new NextResponse(new Uint8Array(report.eventImageData), { status: 200, headers });
+    if (dbBlob) {
+      return new NextResponse(dbBlob, { status: 200, headers });
     }
   }
 

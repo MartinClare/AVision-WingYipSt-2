@@ -58,3 +58,7 @@ IP Address      Title Name      Node
 192.168.10.55   F5 / 2          AVision#2
 192.168.10.56   F5 / 1          AVision#2
 192.168.10.57   F13 / 3         AVision#2
+192.168.10.58   F10 / EA 出料台 AVision#2
+192.168.10.59   F8 / EA1        AVision#2
+192.168.10.62   F6 / EA         AVision#2
+192.168.10.63   ROOF / 5        AVision#2

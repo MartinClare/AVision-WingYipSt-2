@@ -57,11 +57,13 @@ const DEFAULT_CAMERAS: CameraSpec[] = [
   { id: "av2_camera21", name: "F7_2",   streamUrl: "rtsp://admin:123456@192.168.10.42:554/Streaming/Channels/101" },
   { id: "av2_camera22", name: "F7_3",   streamUrl: "rtsp://admin:123456@192.168.10.43:554/Streaming/Channels/101" },
   // Floor 8
-  { id: "av2_camera33", name: "F8_EA1", streamUrl: "rtsp://admin:123456@192.168.10.59:554/Streaming/Channels/1" },
+  { id: "av2_camera33", name: "F8 / EA1", streamUrl: "rtsp://admin:123456@192.168.10.59:554/Streaming/Channels/1" },
   // Floor 9
   { id: "av2_camera23", name: "F9_1",   streamUrl: "rtsp://admin:123456@192.168.10.37:554/Streaming/Channels/101" },
   { id: "av2_camera24", name: "F9_2",   streamUrl: "rtsp://admin:123456@192.168.10.38:554/Streaming/Channels/101" },
   { id: "av2_camera25", name: "F9_3",   streamUrl: "rtsp://admin:123456@192.168.10.39:554/Streaming/Channels/101" },
+  // Floor 10 (EA 出料台 — restricted zone)
+  { id: "av2_camera34", name: "F10 / EA 出料台", streamUrl: "rtsp://admin:123456@192.168.10.58:554/Streaming/Channels/1" },
   // Floor 11
   { id: "av2_camera26", name: "F11_1",  streamUrl: "rtsp://admin:123456@192.168.10.35:554/Streaming/Channels/101" },
   { id: "av2_camera27", name: "F11_2",  streamUrl: "rtsp://admin:123456@192.168.10.36:554/Streaming/Channels/101" },

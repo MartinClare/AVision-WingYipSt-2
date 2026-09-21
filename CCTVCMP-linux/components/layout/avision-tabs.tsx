@@ -29,6 +29,7 @@ export function AVisionTabs({ role }: { role: Role }) {
             <Link
               key={tab.href}
               href={tab.href}
+              prefetch={false}
               className={cn(
                 "inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-colors",
                 active

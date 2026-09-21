@@ -14,7 +14,7 @@
 import crypto from "crypto";
 import { applyTowerCraneAliases, getTowerCraneAliases } from "@/lib/tower-crane-aliases";
 
-const DEFAULT_TIMEOUT_MS = 20_000;
+const DEFAULT_TIMEOUT_MS = 8_000;
 const SESSION_TTL_MS = 20 * 60 * 1000;
 const AES_KEY = Buffer.from("ttx123456Aes1234"); // 16-byte key from platform public.js
 

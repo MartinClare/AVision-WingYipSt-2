@@ -60,6 +60,8 @@ export type TowerCraneMonitorProps = {
   error: string | null;
   fetchedAt: string;
   devices: MonitorDevice[];
+  /** next-intl namespace; defaults to tower crane copy. */
+  i18nNamespace?: "towerCrane" | "mobileMachine";
 };
 
 type PlayingSlot = {
@@ -207,8 +209,16 @@ function loadLeaflet(): Promise<{
   });
 }
 
-function CraneMap({ devices, selectedId }: { devices: MonitorDevice[]; selectedId: string | null }) {
-  const t = useTranslations("towerCrane");
+function CraneMap({
+  devices,
+  selectedId,
+  i18nNamespace = "towerCrane",
+}: {
+  devices: MonitorDevice[];
+  selectedId: string | null;
+  i18nNamespace?: "towerCrane" | "mobileMachine";
+}) {
+  const t = useTranslations(i18nNamespace);
   const points = useMemo(
     () => devices.filter((d) => d.lat != null && d.lng != null),
     [devices]
@@ -289,8 +299,9 @@ export function TowerCraneMonitor({
   error,
   fetchedAt,
   devices,
+  i18nNamespace = "towerCrane",
 }: TowerCraneMonitorProps) {
-  const t = useTranslations("towerCrane");
+  const t = useTranslations(i18nNamespace);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(devices[0]?.deviceId ?? null);
   const [playing, setPlaying] = useState<PlayingSlot[]>([]);
@@ -1016,7 +1027,11 @@ TOWER_CRANE_PASSWORD=********`}
                 </Button>
               </CardHeader>
               <CardContent className="p-3">
-                <CraneMap devices={localDevices} selectedId={selectedDeviceId} />
+                <CraneMap
+                  devices={localDevices}
+                  selectedId={selectedDeviceId}
+                  i18nNamespace={i18nNamespace}
+                />
               </CardContent>
             </Card>
           ) : null}

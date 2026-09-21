@@ -1,45 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Role } from "@prisma/client";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { ONLINE_THRESHOLD_MS } from "@/lib/camera-status";
+import { listEdgeDevicesPage } from "@/lib/edge-devices-list";
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request);
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-  const cameras = await prisma.camera.findMany({
-    include: {
-      project: { select: { id: true, name: true } },
-      zone: { select: { id: true, name: true } },
-      edgeReports: {
-        orderBy: { receivedAt: "desc" },
-        take: 1,
-        select: {
-          id: true,
-          overallRiskLevel: true,
-          overallDescription: true,
-          peopleCount: true,
-          receivedAt: true,
-        },
-      },
-      _count: { select: { incidents: true, edgeReports: true } },
-    },
-    orderBy: { createdAt: "desc" },
+  const offsetRaw = request.nextUrl.searchParams.get("offset");
+  const limitRaw = request.nextUrl.searchParams.get("limit");
+  const offset = offsetRaw != null ? Number(offsetRaw) : 0;
+  const limit = limitRaw != null ? Number(limitRaw) : 12;
+
+  const page = await listEdgeDevicesPage({
+    offset: Number.isFinite(offset) ? offset : 0,
+    limit: Number.isFinite(limit) ? limit : 12,
   });
 
-  const now = Date.now();
-  const data = cameras.map((cam) => ({
-    ...cam,
-    streamUrl: cam.streamUrl,
-    isOnline:
-      cam.status !== "maintenance" &&
-      cam.lastReportAt != null &&
-      now - cam.lastReportAt.getTime() < ONLINE_THRESHOLD_MS,
-    latestReport: cam.edgeReports[0] ?? null,
-  }));
-
-  return NextResponse.json({ data });
+  return NextResponse.json({ data: page });
 }
 
 const createSchema = z.object({
@@ -53,6 +33,9 @@ const createSchema = z.object({
 export async function POST(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request);
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (user.role !== Role.admin && user.role !== Role.project_manager) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
 
   const body = await request.json();
   const parsed = createSchema.safeParse(body);

@@ -280,11 +280,20 @@ def run_remote_checks(remote: RemoteHost) -> list[Check]:
     return results
 
 
+def _systemctl_env() -> dict:
+    env = os.environ.copy()
+    uid = os.getuid()
+    runtime = f"/run/user/{uid}"
+    env.setdefault("XDG_RUNTIME_DIR", runtime)
+    env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path={runtime}/bus")
+    return env
+
 def _systemctl_restart(service: str) -> str:
     result = subprocess.run(
         ["systemctl", "--user", "restart", service],
         capture_output=True,
         text=True,
+        env=_systemctl_env(),
     )
     if result.returncode == 0:
         return f"systemctl --user restart {service} → OK"
@@ -407,12 +416,11 @@ def heal_failures(failures: list[Check]) -> tuple[list[HealResult], list[Check]]
 
 
 def run_checks() -> list[Check]:
+    # Local PPE UI retired — do not check/heal avision-ppe-ui.
     results: list[Check] = [
-        check_port(PORT_PPE_UI, "localhost", PPE_UI_PORT),
         check_port(PORT_EDGE_CLOUD, "localhost", EDGE_CLOUD_PORT),
         check_port(PORT_CMP, "localhost", CMP_PORT),
         check_port(PORT_GO2RTC, "localhost", GO2RTC_PORT),
-        check_process(PROCESS_PPE_UI, PROCESS_PATTERNS[PROCESS_PPE_UI]),
         check_process(PROCESS_EDGE, PROCESS_PATTERNS[PROCESS_EDGE]),
         check_process(PROCESS_CMP, PROCESS_PATTERNS[PROCESS_CMP]),
         check_process(PROCESS_GO2RTC, PROCESS_PATTERNS[PROCESS_GO2RTC]),

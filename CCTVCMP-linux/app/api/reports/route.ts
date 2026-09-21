@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fetchSafetyReportData } from "@/lib/reports/fetch-safety-report-data";
-import { listReportFiles } from "@/lib/reports/report-files";
+import { listReportFilesPage } from "@/lib/reports/report-files";
 
 const GENERATE_ROLES = new Set(["admin", "project_manager", "safety_officer"]);
 const execFileAsync = promisify(execFile);
@@ -38,7 +38,16 @@ export async function GET(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request);
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-  return NextResponse.json({ data: await listReportFiles() });
+  const sp = request.nextUrl.searchParams;
+  const offset = Number(sp.get("offset") ?? "0");
+  const limit = Number(sp.get("limit") ?? "20");
+
+  const page = await listReportFilesPage({
+    offset: Number.isFinite(offset) ? offset : 0,
+    limit: Number.isFinite(limit) ? limit : 20,
+  });
+
+  return NextResponse.json({ data: page });
 }
 
 export async function POST(request: NextRequest) {
@@ -81,7 +90,7 @@ export async function POST(request: NextRequest) {
         cwd: process.cwd(),
         timeout: 180_000,
         env: process.env,
-      },
+      }
     );
 
     const meta = readLastGenerationMeta();

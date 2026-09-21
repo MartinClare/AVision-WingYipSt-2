@@ -1,36 +1,82 @@
+"use client";
+
 import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Pager } from "@/components/ui/pager";
 import { formatHKT } from "@/lib/utils";
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
 import { floorLabel, floorHeading } from "@/lib/camera-status";
+import type { DashboardEdgeTile } from "@/lib/dashboard-data";
 
-type DeviceStatus = {
-  id: string;
-  name: string;
-  edgeCameraId: string | null;
-  streamUrl: string | null;
-  isOnline: boolean;
-  status: string;
-  lastReportAt: string | null;
-  latestRiskLevel: string | null;
-  latestDescription: string | null;
-};
+export function EdgeStatusPanel({
+  initialDevices,
+  initialTotal,
+  pageSize = 12,
+}: {
+  initialDevices: DashboardEdgeTile[];
+  initialTotal: number;
+  pageSize?: number;
+}) {
+  const t = useTranslations("dashboard");
+  const [devices, setDevices] = useState(initialDevices);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
-export async function EdgeStatusPanel({ devices }: { devices: DeviceStatus[] }) {
-  const t = await getTranslations("dashboard");
+  useEffect(() => {
+    setDevices(initialDevices);
+    setTotal(initialTotal);
+    setPage(1);
+  }, [initialDevices, initialTotal]);
+
+  const goTo = useCallback(
+    async (next: number) => {
+      if (next < 1 || next > pageCount || loadingRef.current) return;
+      loadingRef.current = true;
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/dashboard?section=devices&offset=${(next - 1) * pageSize}&limit=${pageSize}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const json = await res.json();
+        const data = json.data;
+        if (!data?.devices) return;
+        setDevices(data.devices);
+        if (typeof data.total === "number") setTotal(data.total);
+        setPage(next);
+      } finally {
+        loadingRef.current = false;
+        setLoading(false);
+      }
+    },
+    [pageCount, pageSize]
+  );
 
   if (devices.length === 0) {
     return (
       <Card>
-        <CardHeader><CardTitle className="text-sm">{t("edgeDevicesLabel")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-sm">{t("edgeDevicesLabel")}</CardTitle>
+        </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-4">
-            {t("noDevicesYet")}
-          </p>
+          <p className="py-4 text-center text-sm text-muted-foreground">{t("noDevicesYet")}</p>
         </CardContent>
       </Card>
     );
+  }
+
+  const groups: { floor: string; items: DashboardEdgeTile[] }[] = [];
+  for (const d of devices) {
+    const fl = floorLabel(d.name);
+    const last = groups[groups.length - 1];
+    if (last && last.floor === fl) last.items.push(d);
+    else groups.push({ floor: fl, items: [d] });
   }
 
   return (
@@ -39,82 +85,72 @@ export async function EdgeStatusPanel({ devices }: { devices: DeviceStatus[] }) 
         <CardTitle className="text-sm">{t("edgeDeviceStatus")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        {(() => {
-          // Group devices by floor, preserving the sorted order from the page
-          const groups: { floor: string; items: typeof devices }[] = [];
-          for (const d of devices) {
-            const fl = floorLabel(d.name);
-            const last = groups[groups.length - 1];
-            if (last && last.floor === fl) last.items.push(d);
-            else groups.push({ floor: fl, items: [d] });
-          }
-          return groups.map(({ floor, items }) => (
-            <div key={floor}>
-              {/* Floor heading */}
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {floorHeading(floor)}
-                </span>
-                <span className="text-xs text-muted-foreground/50">({items.length})</span>
-                <div className="flex-1 border-t border-border/40" />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {items.map((d) => (
-                  <Link
-                    key={d.id}
-                    href={`/edge-devices/${d.id}`}
-                    className="block rounded-lg border p-3 transition-colors hover:bg-muted/50"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`h-2.5 w-2.5 rounded-full ${
-                            d.status === "maintenance"
-                              ? "bg-yellow-400"
-                              : d.isOnline
+        {groups.map(({ floor, items }) => (
+          <div key={floor}>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {floorHeading(floor)}
+              </span>
+              <span className="text-xs text-muted-foreground/50">({items.length})</span>
+              <div className="flex-1 border-t border-border/40" />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((d) => (
+                <Link
+                  key={d.id}
+                  href={`/edge-devices/${d.id}`}
+                  className="block rounded-lg border p-3 transition-colors hover:bg-muted/50"
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${
+                          d.status === "maintenance"
+                            ? "bg-yellow-400"
+                            : d.isOnline
                               ? "bg-green-400 animate-pulse"
                               : "bg-red-400"
-                          }`}
-                        />
-                        <span className="font-medium text-sm">{d.name}</span>
-                      </div>
-                      {d.latestRiskLevel && (
-                        <Badge
-                          variant={
-                            d.latestRiskLevel === "High"
-                              ? "destructive"
-                              : d.latestRiskLevel === "Medium"
+                        }`}
+                      />
+                      <span className="text-sm font-medium">{d.name}</span>
+                    </div>
+                    {d.latestRiskLevel && (
+                      <Badge
+                        variant={
+                          d.latestRiskLevel === "High"
+                            ? "destructive"
+                            : d.latestRiskLevel === "Medium"
                               ? "default"
                               : "secondary"
-                          }
-                          className="text-xs"
-                        >
-                          {d.latestRiskLevel}
-                        </Badge>
-                      )}
-                    </div>
-                    {d.latestDescription && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
-                        {d.latestDescription}
-                      </p>
+                        }
+                        className="text-xs"
+                      >
+                        {d.latestRiskLevel}
+                      </Badge>
                     )}
-                    {(d.edgeCameraId || d.streamUrl) && (
-                      <p className="text-[11px] text-muted-foreground line-clamp-1 mb-1">
-                        {d.edgeCameraId ?? "—"}
-                        {d.streamUrl ? ` · ${d.streamUrl}` : ""}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      {d.lastReportAt
-                        ? t("lastReport", { time: formatHKT(d.lastReportAt) })
-                        : t("noReportsYet")}
+                  </div>
+                  {d.latestDescription && (
+                    <p className="mb-1 line-clamp-2 text-xs text-muted-foreground">
+                      {d.latestDescription}
                     </p>
-                  </Link>
-                ))}
-              </div>
+                  )}
+                  {(d.edgeCameraId || d.streamUrl) && (
+                    <p className="mb-1 line-clamp-1 text-[11px] text-muted-foreground">
+                      {d.edgeCameraId ?? "—"}
+                      {d.streamUrl ? ` · ${d.streamUrl}` : ""}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {d.lastReportAt
+                      ? t("lastReport", { time: formatHKT(d.lastReportAt) })
+                      : t("noReportsYet")}
+                  </p>
+                </Link>
+              ))}
             </div>
-          ));
-        })()}
+          </div>
+        ))}
+        <Pager page={page} pageCount={pageCount} loading={loading} onGo={(p) => void goTo(p)} />
       </CardContent>
     </Card>
   );
